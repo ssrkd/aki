@@ -338,6 +338,9 @@ async function persistChatMessage(
 export async function processChatMessage(params: ProcessChatParams): Promise<ProcessChatResult> {
   const { channel, chatId, userMessage, history = [] } = params
 
+  // СНАЧАЛА сохраняем сообщение пользователя в БД, чтобы гарантировать правильный хронологический порядок!
+  await persistChatMessage(channel, chatId, 'user', userMessage)
+
   // 1. Формируем контекст даты и времени
   const { fullPromptText } = getAlmatyDateTime()
 
@@ -356,6 +359,11 @@ export async function processChatMessage(params: ProcessChatParams): Promise<Pro
 Имя пиши строго строчными буквами: "aki AI".
 
 ${fullPromptText}
+
+ИМЯ ПОЛЬЗОВАТЕЛЯ (СТРОЖАЙШЕ!):
+- Пользователя зовут СЕРИК (srk).
+- КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО называть его "Сергей", "Серёжа" или другими именами!
+- Серик — это красивое самостоятельное имя. Обращайся к нему исключительно "Серик".
 
 ЛИЧНОСТЬ И СТИЛЬ:
 - Ты умный, проницательный, глубокий и живой собеседник, а не бюрократический бот.
@@ -496,9 +504,8 @@ ${dbOverview}`
     .replace(/\*\*/g, '')
     .trim()
 
-  // 6. Сохраняем в историю чата в Supabase (асинхронно)
-  persistChatMessage(channel, chatId, 'user', userMessage)
-  persistChatMessage(channel, chatId, 'assistant', cleanReply)
+  // 6. Сохраняем ответ ассистента в историю чата в Supabase (после вопроса)
+  await persistChatMessage(channel, chatId, 'assistant', cleanReply)
 
   return {
     reply: cleanReply,

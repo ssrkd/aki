@@ -25,7 +25,7 @@ async function sendTelegramMessage(
   }
 }
 
-// Отправка действия "печатает..." или "записывает аудио..."
+// Отправка действия "печатает..."
 async function sendChatAction(token: string, chatId: number | string, action = 'typing') {
   try {
     await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
@@ -43,18 +43,15 @@ async function transcribeVoice(botToken: string, fileId: string): Promise<string
     throw new Error('Groq API ключ не настроен для Whisper')
   }
 
-  // 1. Получаем путь к файлу из Telegram
   const fileRes = await fetch(`https://api.telegram.org/bot${botToken}/getFile?file_id=${fileId}`)
   const fileData = await fileRes.json()
   if (!fileData.ok || !fileData.result?.file_path) {
     throw new Error('Не удалось получить файл голосового из Telegram')
   }
 
-  // 2. Скачиваем аудиофайл
   const fileUrl = `https://api.telegram.org/file/bot${botToken}/${fileData.result.file_path}`
   const audioBlob = await (await fetch(fileUrl)).blob()
 
-  // 3. Отправляем в Groq Whisper API
   const formData = new FormData()
   formData.append('file', audioBlob, 'voice.ogg')
   formData.append('model', 'whisper-large-v3-turbo')
@@ -84,13 +81,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: 'Token missing' }, { status: 500 })
     }
 
-    // Проверка секретного токена вебхука (если настроен)
-    const secretHeader = req.headers.get('x-telegram-bot-api-secret-token')
-    const expectedSecret = process.env.TELEGRAM_SECRET_TOKEN
-    if (expectedSecret && secretHeader !== expectedSecret) {
-      return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 })
-    }
-
     const update = await req.json()
     const message = update.message || update.edited_message
 
@@ -99,13 +89,46 @@ export async function POST(req: NextRequest) {
     }
 
     const chatId = message.chat.id
-    const firstName = message.chat.first_name || 'друг'
+    const firstName = message.chat.first_name || 'Серик'
     const username = message.chat.username || null
     const text = message.text ? message.text.trim() : ''
 
     const supabase = createServiceClient()
 
-    // Запоминаем пользователя Telegram
+    // 1. Команда /myid или /id — чтобы Серик мог быстро узнать свой Telegram Chat ID
+    if (text === '/myid' || text === '/id') {
+      await sendTelegramMessage(
+        botToken,
+        chatId,
+        `🆔 <b>Твой Telegram ID:</b> <code>${chatId}</code>\n\nМожешь скопировать его в настройки или отправить мне.`
+      )
+      return NextResponse.json({ ok: true })
+    }
+
+    // 2. Определение владельца (Серика)
+    // Проверяем: либо совпадает с переменной TELEGRAM_OWNER_ID, либо это первый/единственный зарегистрированный пользователь
+    const configuredOwnerId = process.env.TELEGRAM_OWNER_ID || process.env.TELEGRAM_CHAT_ID
+
+    let isOwner = false
+    if (configuredOwnerId) {
+      isOwner = String(chatId) === String(configuredOwnerId)
+    } else {
+      // Если переменная не задана, проверяем первого пользователя в telegram_users
+      const { data: owners } = await supabase
+        .from('telegram_users')
+        .select('chat_id')
+        .order('created_at', { ascending: true })
+        .limit(1)
+
+      if (owners && owners.length > 0) {
+        isOwner = String(chatId) === String(owners[0].chat_id)
+      } else {
+        // Если база пустая — первый написавший автоматически становится владельцем!
+        isOwner = true
+      }
+    }
+
+    // Сохраняем пользователя в telegram_users
     try {
       await supabase.from('telegram_users').upsert(
         {
@@ -118,33 +141,29 @@ export async function POST(req: NextRequest) {
       )
     } catch {}
 
-    // 1. Команда /start или /login — выдаём код авторизации
-    if (text === '/start' || text === '/login' || text.toLowerCase() === 'код' || text.toLowerCase() === 'войти') {
-      const code = Math.floor(1000 + Math.random() * 9000).toString()
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString()
-
-      await supabase.from('otp_codes').insert({
-        code,
-        expires_at: expiresAt,
-        used: false,
-      })
-
-      const replyText =
-        `👋 Привет, <b>${firstName}</b>!\n\n` +
-        `🔑 Твой код для входа в <b>aki</b>:\n\n` +
-        `<code>${code}</code>\n\n` +
-        `⏱ Код действует 10 минут.\n\n` +
-        `💬 Ты также можешь общаться со мной прямо здесь! Пиши мне любые мысли, цели, привычки или наговаривай голосовые сообщения.`
-
-      await sendTelegramMessage(botToken, chatId, replyText, {
-        inline_keyboard: [
-          [{ text: '🚀 Открыть веб-трекер aki', url: 'https://aki-srk.vercel.app/login' }],
-        ],
-      })
+    // 3. ЕСЛИ ЭТО НЕ СЕРИК — вежливо отказываем
+    if (!isOwner) {
+      await sendTelegramMessage(
+        botToken,
+        chatId,
+        'Здравствуйте! Я — персональный ассистент Серика. Доступ к системе и общению открыт только для владельца. Желаю вам хорошего дня!'
+      )
       return NextResponse.json({ ok: true })
     }
 
-    // 2. Обработка голосовых сообщений
+    // 4. ЕСЛИ ЭТО СЕРИК:
+    // Команда /start — просто приветствие БЕЗ ВЫДАЧИ ПАРОЛЕЙ!
+    if (text === '/start') {
+      await sendTelegramMessage(
+        botToken,
+        chatId,
+        `Привет, <b>${firstName}</b>! Я aki AI — твой личный ассистент.\n\n` +
+        `Я на связи 24/7. Можешь писать мне любые мысли, задачи, планы или наговаривать голосовые сообщения. Чем займёмся?`
+      )
+      return NextResponse.json({ ok: true })
+    }
+
+    // 5. Обработка голосовых сообщений
     let incomingText = text
     if (message.voice) {
       await sendChatAction(botToken, chatId, 'record_voice')
@@ -154,12 +173,11 @@ export async function POST(req: NextRequest) {
           await sendTelegramMessage(
             botToken,
             chatId,
-            '🎙 Не удалось разобрать слова в голосовом сообщении. Попробуй наговорить ещё раз или напиши текстом.'
+            '🎙 Не удалось разобрать слова в аудио. Попробуй наговорить ещё раз или напиши текстом.'
           )
           return NextResponse.json({ ok: true })
         }
         incomingText = transcribed
-        // Оповестим пользователя, что расшифровали
         await sendTelegramMessage(botToken, chatId, `🎙 <i>«${transcribed}»</i>`)
       } catch (voiceErr: any) {
         console.error('Ошибка транскрибации:', voiceErr)
@@ -168,7 +186,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 3. Обработка пересланных сообщений или фото с подписью (сохранение в заметки)
     if (message.caption) {
       incomingText = message.caption
     } else if (message.forward_date && !incomingText) {
@@ -179,21 +196,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true })
     }
 
-    // Показываем индикатор печати
+    // Индикатор печати
     await sendChatAction(botToken, chatId, 'typing')
 
-    // Загружаем последнюю историю из chat_messages (если есть)
+    // Загружаем последнюю историю из chat_messages
     let history: { role: 'user' | 'assistant'; content: string }[] = []
     try {
       const { data: historyData } = await supabase
         .from('chat_messages')
         .select('role, content')
-        .or(`chat_id.eq.${chatId},channel.eq.web`)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
         .limit(10)
 
       if (historyData && historyData.length > 0) {
-        history = historyData.reverse().map((h: any) => ({
+        history = historyData.map((h: any) => ({
           role: h.role as 'user' | 'assistant',
           content: h.content,
         }))
@@ -208,7 +224,6 @@ export async function POST(req: NextRequest) {
       history,
     })
 
-    // Формируем красивый ответ
     let finalTgText = result.reply
 
     // Если выполнены действия с базой, добавляем аккуратный блок внизу

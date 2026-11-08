@@ -1,6 +1,5 @@
-import type { NextConfig } from 'next'
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // Настройка для корректной работы с Supabase
   experimental: {
     serverComponentsExternalPackages: [],
@@ -8,4 +7,3 @@ const nextConfig: NextConfig = {
 }
 
 export default nextConfig
-

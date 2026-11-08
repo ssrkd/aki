@@ -310,6 +310,40 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
         }
       }
 
+      case 'save_person': {
+        const { name: personName, relation = 'friend', birthday, notes = '', hobbies = '' } = args
+        // Сохраняем в таблицу people, а при ее отсутствии — как заметку о друге
+        try {
+          const { error } = await supabase.from('people').insert({
+            name: personName,
+            relation,
+            birthday: birthday || null,
+            notes,
+            hobbies,
+          })
+          if (!error) {
+            return {
+              tool: 'save_person',
+              details: `Создана карточка человека: ${personName} (${relation})`,
+              success: true,
+            }
+          }
+        } catch {}
+
+        // Fallback в notes
+        await supabase.from('notes').insert({
+          title: `Карточка: ${personName}`,
+          category: relation === 'family' ? 'family' : 'friends',
+          content: `Имя: ${personName}\nОтношение: ${relation}\nДень рождения: ${birthday || 'не указан'}\nЗаметки: ${notes}\nИнтересы: ${hobbies}`,
+        })
+
+        return {
+          tool: 'save_person',
+          details: `Сохранена карточка человека: ${personName}`,
+          success: true,
+        }
+      }
+
       default:
         return { tool: name, details: 'Команда выполнена', success: true }
     }

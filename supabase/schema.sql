@@ -130,6 +130,36 @@ create table if not exists notes (
   created_at timestamptz default now()
 );
 
+-- 9. Карточки людей (друзья, семья, окружение)
+create table if not exists people (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  relation text default 'friend', -- 'friend', 'family', 'colleague', 'mentor'
+  birthday text, -- 'YYYY-MM-DD' или 'MM-DD'
+  notes text default '',
+  hobbies text default '',
+  last_contact_date date,
+  created_at timestamptz default now()
+);
+
+-- 10. Единая история диалогов aki AI (Web + Telegram)
+create table if not exists chat_messages (
+  id uuid primary key default gen_random_uuid(),
+  channel text check (channel in ('web', 'tg')) not null default 'web',
+  chat_id text,
+  role text check (role in ('user', 'assistant')) not null,
+  content text not null,
+  created_at timestamptz default now()
+);
+
+-- 11. Лог автономных сообщений aki (для Cron, чтобы не спамить)
+create table if not exists ai_proactive_log (
+  id uuid primary key default gen_random_uuid(),
+  topic text not null,
+  message text not null,
+  sent_at timestamptz default now()
+);
+
 -- Отключаем Row Level Security для простоты (проект персональный, защищён OTP на уровне Next.js middleware)
 alter table otp_codes disable row level security;
 alter table habits disable row level security;
@@ -142,3 +172,6 @@ alter table plans disable row level security;
 alter table plan_tasks disable row level security;
 alter table achievements disable row level security;
 alter table notes disable row level security;
+alter table people disable row level security;
+alter table chat_messages disable row level security;
+alter table ai_proactive_log disable row level security;

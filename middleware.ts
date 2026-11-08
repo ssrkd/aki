@@ -4,7 +4,7 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   // Публичные пути — не требуют авторизации
-  const publicPaths = ['/login', '/api/auth/verify-otp', '/api/telegram']
+  const publicPaths = ['/login', '/api/auth', '/api/telegram']
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))
 
   if (isPublic) {
@@ -32,4 +32,3 @@ export const config = {
     '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 }
-

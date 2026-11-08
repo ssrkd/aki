@@ -12,6 +12,16 @@ create table if not exists otp_codes (
   created_at timestamptz default now()
 );
 
+-- Таблица пользователей Telegram бота (для отправки кодов при логине)
+create table if not exists telegram_users (
+  id uuid primary key default gen_random_uuid(),
+  chat_id bigint not null unique,
+  username text,
+  first_name text,
+  last_interaction timestamptz default now(),
+  created_at timestamptz default now()
+);
+
 -- 2. Привычки
 create table if not exists habits (
   id uuid primary key default gen_random_uuid(),

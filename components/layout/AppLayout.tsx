@@ -21,3 +21,4 @@ export default function AppLayout({ children, title, subtitle }: AppLayoutProps)
     </div>
   )
 }
+

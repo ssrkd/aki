@@ -28,3 +28,4 @@ export default function Badge({ children, variant = 'gray', className = '' }: Ba
     </span>
   )
 }
+

@@ -152,3 +152,4 @@ export interface Note {
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger'
 export type BadgeVariant = 'blue' | 'green' | 'red' | 'yellow' | 'gray'
+

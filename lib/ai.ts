@@ -311,35 +311,148 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
       }
 
       case 'save_person': {
-        const { name: personName, relation = 'friend', birthday, notes = '', hobbies = '' } = args
-        // Сохраняем в таблицу people, а при ее отсутствии — как заметку о друге
-        try {
-          const { error } = await supabase.from('people').insert({
-            name: personName,
-            relation,
-            birthday: birthday || null,
-            notes,
-            hobbies,
-          })
-          if (!error) {
-            return {
-              tool: 'save_person',
-              details: `Создана карточка человека: ${personName} (${relation})`,
-              success: true,
-            }
-          }
-        } catch {}
+        const {
+          name: personName,
+          nickname = '',
+          relation = 'friend',
+          age,
+          city = '',
+          birthday,
+          occupation = '',
+          how_met = '',
+          tastes = '',
+          important_people = '',
+          goals_problems = '',
+          gifts = '',
+          debts_promises = '',
+          notes = '',
+        } = args
 
-        // Fallback в notes
-        await supabase.from('notes').insert({
-          title: `Карточка: ${personName}`,
-          category: relation === 'family' ? 'family' : 'friends',
-          content: `Имя: ${personName}\nОтношение: ${relation}\nДень рождения: ${birthday || 'не указан'}\nЗаметки: ${notes}\nИнтересы: ${hobbies}`,
-        })
+        if (!personName) {
+          return { tool: 'save_person', details: 'Не указано имя', success: false }
+        }
+
+        // Автоматическая генерация стильной аватарки по имени
+        const avatarUrl =
+          args.avatar_url ||
+          `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(personName)}`
+
+        let savedSuccess = false
+
+        // Проверяем, есть ли уже человек с таким именем
+        try {
+          const { data: existing } = await supabase
+            .from('people')
+            .select('id, notes, city, age')
+            .ilike('name', personName)
+            .limit(1)
+
+          if (existing && existing.length > 0) {
+            const current = existing[0]
+            const updatePayload: any = {}
+            if (relation) updatePayload.relation = relation
+            if (nickname) updatePayload.nickname = nickname
+            if (age !== undefined && age !== null) updatePayload.age = Number(age)
+            if (city) updatePayload.city = city
+            if (birthday) updatePayload.birthday = birthday
+            if (occupation) updatePayload.occupation = occupation
+            if (how_met) updatePayload.how_met = how_met
+            if (tastes) updatePayload.tastes = tastes
+            if (important_people) updatePayload.important_people = important_people
+            if (goals_problems) updatePayload.goals_problems = goals_problems
+            if (gifts) updatePayload.gifts = gifts
+            if (debts_promises) updatePayload.debts_promises = debts_promises
+            if (notes) updatePayload.notes = notes
+            updatePayload.last_contact_date = new Date().toISOString().split('T')[0]
+
+            const { error: updateErr } = await supabase
+              .from('people')
+              .update(updatePayload)
+              .eq('id', current.id)
+
+            savedSuccess = !updateErr
+          } else {
+            const { error: insertErr } = await supabase.from('people').insert({
+              name: personName,
+              nickname,
+              relation,
+              age: age ? Number(age) : null,
+              city,
+              birthday: birthday || null,
+              occupation,
+              how_met,
+              tastes,
+              important_people,
+              goals_problems,
+              gifts,
+              debts_promises,
+              avatar_url: avatarUrl,
+              notes,
+              last_contact_date: new Date().toISOString().split('T')[0],
+            })
+            savedSuccess = !insertErr
+          }
+        } catch {
+          // fallback в notes
+        }
+
+        if (!savedSuccess) {
+          try {
+            await supabase.from('notes').insert({
+              title: `Досье: ${personName}`,
+              category: relation === 'family' ? 'family' : 'friends',
+              content: `Имя: ${personName}\nВозраст: ${age || ''}\nГород: ${city || ''}\nОтношение: ${relation}\nЗаметки: ${notes}`,
+            })
+            savedSuccess = true
+          } catch {}
+        }
+
+        // Также обязательно сохраняем в «мысль аки» для контекста
+        const factDetails = [
+          `Друг: ${personName}`,
+          age ? `возраст: ${age}` : '',
+          city ? `город: ${city}` : '',
+          occupation ? `занятость: ${occupation}` : '',
+          notes ? `детали: ${notes}` : '',
+        ]
+          .filter(Boolean)
+          .join(', ')
+
+        await addAIThought('friends', factDetails)
 
         return {
           tool: 'save_person',
-          details: `Сохранена карточка человека: ${personName}`,
+          details: `Создано досье: ${personName}${age ? `, ${age} лет` : ''}${city ? `, г. ${city}` : ''}`,
+          success: true,
+        }
+      }
+
+      case 'record_interaction': {
+        const { person_name, summary, type = 'chat' } = args
+        try {
+          const { data: p } = await supabase
+            .from('people')
+            .select('id')
+            .ilike('name', person_name)
+            .limit(1)
+
+          if (p && p.length > 0) {
+            await supabase.from('interactions').insert({
+              person_id: p[0].id,
+              type,
+              summary,
+              interaction_date: new Date().toISOString().split('T')[0],
+            })
+            await supabase
+              .from('people')
+              .update({ last_contact_date: new Date().toISOString().split('T')[0] })
+              .eq('id', p[0].id)
+          }
+        } catch {}
+
+        return {
+          tool: 'record_interaction',
+          details: `Зафиксирован контакт с ${person_name}: ${summary}`,
           success: true,
         }
       }

@@ -359,19 +359,20 @@ ${fullPromptText}
 
 ЛИЧНОСТЬ И СТИЛЬ:
 - Ты умный, проницательный, глубокий и живой собеседник, а не бюрократический бот.
+- Общайся на безупречном, естественном русском языке. Строго соблюдай грамматику (говори "ему 18 лет", а не "он тебе 18 лет", "мы с ним", "ты с ним").
 - Общайся на равных, тепло, уважительно и по делу.
 - Умей поддерживать живой диалог, внимательно слушай Серика, держи нить разговора и помни всё, о чем вы говорили ранее.
-- Если Серик предлагает тему (о друзьях, работе, мыслях, книгах), РАЗВИВАЙ беседу: задавай интересные вопросы, делись мыслями, помогай глубже раскрыть вопрос.
+- Если Серик рассказывает о друге, знакомом или близком человеке (например: "у меня есть друг Ансар, ему 18 лет, он из Кызылорды"), ОБЯЗАТЕЛЬНО вызови save_person для создания досье на этого человека! Заполни имя, возраст, город и детали.
+- Развивай беседу: задавай интересные вопросы, делись мыслями, помогай глубже раскрыть вопрос.
 - Избегай формализма вроде "Чем я могу вам помочь сегодня".
 
 ОФОРМЛЕНИЕ ТЕКСТА:
 - СТРОГО ЗАПРЕЩЕНО использовать двойные звездочки ** для выделения текста. НИКАКИХ **слово**!
-- Пиши чистым текстом без markdown-жирности.
-- Списки оформляй обычными дефисами или цифрами.
+- Твой ответ Серику должен быть только чистым текстом беседы. JSON-блок с действиями пиши в самом конце. Серик не должен видеть программный код или JSON.
 
-ПРАВИЛО БЛОКНОТА «МЫСЛЬ АКИ»:
+ПРАВИЛО БЛОКНОТА «МЫСЛЬ АКИ» И ДОСЬЕ:
 - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО протоколировать разговор ("Серик спросил...", "Серик хочет поговорить о...")!
-- Вызывай инструмент add_thought ИСКЛЮЧИТЕЛЬНО тогда, когда Серик сообщил РЕАЛЬНЫЙ, ЦЕННЫЙ ФАКТ о своей жизни/ценностях/принципах, либо когда Серик прямо говорит "запомни это" / "запиши в мысли".
+- Если речь идёт о друге/человеке — используй инструмент save_person (он автоматически добавит факт и в память, и создаст карточку).
 
 ДЕЙСТВИЯ С ТРЕКЕРОМ (РЕАЛЬНЫЕ ID ИЗ ТЕКУЩЕЙ БАЗЫ):
 У тебя есть доступ к базе данных Серика. Для обновления целей (update_goal_progress) и привычек (toggle_habit_today) используй ТОЛЬКО РЕАЛЬНЫЕ id из блока данных ниже!
@@ -379,6 +380,8 @@ ${fullPromptText}
 \`\`\`json
 {
   "actions": [
+    { "tool": "save_person", "args": { "name": "Имя", "age": 18, "city": "Город", "relation": "friend"|"family"|"colleague", "birthday": "YYYY-MM-DD", "occupation": "...", "notes": "..." } },
+    { "tool": "record_interaction", "args": { "person_name": "Имя", "summary": "О чём говорили / где виделись" } },
     { "tool": "create_goal", "args": { "title": "...", "horizon": "1year"|"5years"|"10years" } },
     { "tool": "update_goal_progress", "args": { "goal_id": "<РЕАЛЬНЫЙ_ID>", "progress": 50 } },
     { "tool": "create_habit", "args": { "name": "...", "type": "positive"|"negative" } },
@@ -387,8 +390,7 @@ ${fullPromptText}
     { "tool": "create_plan", "args": { "title": "...", "tasks": ["Задача 1"] } },
     { "tool": "add_note", "args": { "title": "...", "category": "ideas", "content": "..." } },
     { "tool": "add_book", "args": { "title": "...", "author": "...", "status": "want" } },
-    { "tool": "add_thought", "args": { "content": "Фактическое наблюдение о Серике", "category": "self"|"friends"|"work"|"principles" } },
-    { "tool": "save_person", "args": { "name": "Имя", "relation": "friend"|"family"|"colleague", "birthday": "YYYY-MM-DD", "notes": "..." } }
+    { "tool": "add_thought", "args": { "content": "Фактическое наблюдение о Серике", "category": "self"|"friends"|"work"|"principles" } }
   ]
 }
 \`\`\`
@@ -447,28 +449,45 @@ ${dbOverview}`
     throw new Error('Все провайдеры искусственного интеллекта временно недоступны.')
   }
 
-  // 5. Обработка действий (JSON actions)
+  // 5. Железная обработка и полное вырезание действий (JSON actions)
   const actions: ActionLog[] = []
   let cleanReply = rawReply
 
-  const jsonMatch = rawReply.match(/```json\s*(\{[\s\S]*?\})\s*```/)
-  if (jsonMatch) {
-    try {
-      const parsed = JSON.parse(jsonMatch[1])
-      if (parsed.actions && Array.isArray(parsed.actions)) {
-        for (const act of parsed.actions) {
-          const res = await executeDBTool(act.tool, act.args || {})
+  // Поиск JSON с actions (как в бэктиках, так и голым блоком)
+  const jsonRegexes = [
+    /```(?:json)?\s*(\{[\s\S]*?"actions"[\s\S]*?\})\s*```/i,
+    /(\{[\s\S]*?"actions"\s*:\s*\[[\s\S]*?\}\s*\]\s*\})/i,
+    /(\{[\s\S]*?"tool"[\s\S]*?\})/i,
+  ]
+
+  for (const regex of jsonRegexes) {
+    const match = cleanReply.match(regex)
+    if (match) {
+      try {
+        const parsed = JSON.parse(match[1])
+        if (parsed.actions && Array.isArray(parsed.actions)) {
+          for (const act of parsed.actions) {
+            const res = await executeDBTool(act.tool, act.args || {})
+            actions.push(res)
+          }
+        } else if (parsed.tool) {
+          const res = await executeDBTool(parsed.tool, parsed.args || {})
           actions.push(res)
         }
+        cleanReply = cleanReply.replace(match[0], '').trim()
+      } catch (e) {
+        // если не распарсился как чистый JSON, всё равно удаляем кусок кода из текста
+        cleanReply = cleanReply.replace(match[0], '').trim()
       }
-      cleanReply = rawReply.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '').trim()
-    } catch (e) {
-      console.warn('[aki AI] Ошибка парсинга JSON actions:', e)
     }
   }
 
-  // Удаляем любые двойные звездочки из ответа
-  cleanReply = cleanReply.replace(/\*\*/g, '').trim()
+  // Финальная зачистка любых случайных JSON-хвостов из текста ответа
+  cleanReply = cleanReply
+    .replace(/```(?:json)?[\s\S]*?```/g, '')
+    .replace(/\{[\s\n]*"actions"[\s\S]*$/g, '')
+    .replace(/\*\*/g, '')
+    .trim()
 
   // 6. Сохраняем в историю чата в Supabase (асинхронно)
   persistChatMessage(channel, chatId, 'user', userMessage)

@@ -65,8 +65,9 @@ export default function AkiAssistantDrawer() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Загрузка сообщений из localStorage при старте
+  // Загрузка сообщений из постоянной базы данных Supabase + localStorage
   useEffect(() => {
+    // 1. Быстрый показ из localStorage
     try {
       const saved = localStorage.getItem('aki_chat_messages')
       if (saved) {
@@ -75,9 +76,28 @@ export default function AkiAssistantDrawer() {
           setMessages(parsed)
         }
       }
-    } catch {
-      // fallback
+    } catch {}
+
+    // 2. Синхронизация с сервером (база данных)
+    const syncDbChat = async () => {
+      try {
+        const res = await fetch('/api/ai/chat')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
+            const formatted: Message[] = data.messages.map((m: any) => ({
+              id: m.id || String(Math.random()),
+              role: m.role,
+              content: m.content.replace(/\*\*/g, '').trim(),
+            }))
+            setMessages(formatted)
+            localStorage.setItem('aki_chat_messages', JSON.stringify(formatted))
+          }
+        }
+      } catch {}
     }
+
+    syncDbChat()
   }, [])
 
   // Сохранение сообщений в localStorage

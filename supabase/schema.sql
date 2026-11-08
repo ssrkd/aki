@@ -130,15 +130,35 @@ create table if not exists notes (
   created_at timestamptz default now()
 );
 
--- 9. Карточки людей (друзья, семья, окружение)
+-- 9. Карточки людей (Досье на друзей, близких и окружение)
 create table if not exists people (
   id uuid primary key default gen_random_uuid(),
   name text not null,
+  nickname text default '',
   relation text default 'friend', -- 'friend', 'family', 'colleague', 'mentor'
+  age integer,
+  city text default '',
   birthday text, -- 'YYYY-MM-DD' или 'MM-DD'
+  occupation text default '', -- Чем занимается
+  how_met text default '', -- Как познакомились, история дружбы
+  tastes text default '', -- Вкусы, еда, музыка, хобби, аллергии
+  important_people text default '', -- Близкие (девушка, родители, братья)
+  goals_problems text default '', -- Его цели и проблемы
+  gifts text default '', -- Что дарили, идеи подарков
+  debts_promises text default '', -- Взаимные обещания и долги
+  avatar_url text default '', -- Ссылка на аватарку
+  last_contact_date date default current_date,
   notes text default '',
-  hobbies text default '',
-  last_contact_date date,
+  created_at timestamptz default now()
+);
+
+-- Таблица лога общения с людьми (встречи, созвоны, важные разговоры)
+create table if not exists interactions (
+  id uuid primary key default gen_random_uuid(),
+  person_id uuid references people(id) on delete cascade,
+  interaction_date date default current_date,
+  type text default 'chat', -- 'meeting', 'call', 'chat'
+  summary text not null,
   created_at timestamptz default now()
 );
 
@@ -173,5 +193,6 @@ alter table plan_tasks disable row level security;
 alter table achievements disable row level security;
 alter table notes disable row level security;
 alter table people disable row level security;
+alter table interactions disable row level security;
 alter table chat_messages disable row level security;
 alter table ai_proactive_log disable row level security;

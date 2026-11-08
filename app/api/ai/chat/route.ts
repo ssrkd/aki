@@ -1,5 +1,26 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processChatMessage } from '@/lib/chat'
+import { createServiceClient } from '@/lib/supabase'
+
+export async function GET(req: NextRequest) {
+  try {
+    const sessionCookie = req.cookies.get('aki_session')?.value
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createServiceClient()
+    const { data: dbMessages } = await supabase
+      .from('chat_messages')
+      .select('id, role, content, created_at')
+      .order('created_at', { ascending: true })
+      .limit(60)
+
+    return NextResponse.json({ messages: dbMessages || [] })
+  } catch (err: any) {
+    return NextResponse.json({ messages: [] })
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {

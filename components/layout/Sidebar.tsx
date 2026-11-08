@@ -11,11 +11,13 @@ import {
   Trophy,
   FileText,
   Sparkles,
+  Users,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/habits', label: 'Привычки', icon: CheckSquare },
   { href: '/goals', label: 'Цели', icon: Target },
+  { href: '/people', label: 'Окружение', icon: Users },
   { href: '/finances', label: 'Финансы', icon: DollarSign },
   { href: '/books', label: 'Книги', icon: BookOpen },
   { href: '/plans', label: 'Планы', icon: ClipboardList },

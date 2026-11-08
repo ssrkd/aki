@@ -13,16 +13,20 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServiceClient()
 
-    // Ищем действующий OTP код
+    // Ищем действующий OTP код (самый свежий)
     const { data, error } = await supabase
       .from('otp_codes')
       .select('*')
       .eq('code', code)
       .eq('used', false)
       .gt('expires_at', new Date().toISOString())
-      .single()
+      .order('created_at', { ascending: false })
+      .limit(1)
 
-    if (error || !data) {
+    const validOtp = data && data.length > 0 ? data[0] : null
+
+    if (error || !validOtp) {
+      console.error('Ошибка верификации OTP:', error || 'Код не найден или истёк')
       return NextResponse.json({ error: 'Неверный или истёкший код' }, { status: 401 })
     }
 
@@ -30,7 +34,7 @@ export async function POST(req: NextRequest) {
     await supabase
       .from('otp_codes')
       .update({ used: true })
-      .eq('id', data.id)
+      .eq('id', validOtp.id)
 
     // Устанавливаем сессионную куку
     const { name, value, options } = getSessionCookieOptions()
@@ -43,4 +47,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Внутренняя ошибка сервера' }, { status: 500 })
   }
 }
-

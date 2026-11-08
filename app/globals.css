@@ -16,7 +16,8 @@
 body {
   background-color: var(--bg-page);
   color: var(--text-primary);
-  min-width: 1024px;
+  margin: 0;
+  padding: 0;
 }
 
 /* Скроллбар */
@@ -34,4 +35,3 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: #9ca3af;
 }
-

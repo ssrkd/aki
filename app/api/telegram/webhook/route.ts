@@ -37,6 +37,21 @@ export async function POST(req: NextRequest) {
       console.warn('Не удалось обновить telegram_users:', e)
     }
 
+    // Сохраняем chat_id в principles (как резервный канал, не требующий новой таблицы)
+    try {
+      const { data: existing } = await supabase
+        .from('principles')
+        .select('id')
+        .eq('text', `tg_chat:${chatId}`)
+        .limit(1)
+
+      if (!existing || existing.length === 0) {
+        await supabase.from('principles').insert({ text: `tg_chat:${chatId}` })
+      }
+    } catch (e) {
+      console.warn('Не удалось сохранить в principles:', e)
+    }
+
     // Генерируем 4-значный код
     const code = Math.floor(1000 + Math.random() * 9000).toString()
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString() // 10 минут

@@ -90,7 +90,7 @@ export function useHabits() {
       .from('principles')
       .select('*')
       .order('created_at', { ascending: true })
-    if (!error) setPrinciples(data || [])
+    if (!error) setPrinciples((data || []).filter((p) => !p.text.startsWith('tg_chat:')))
   }, [])
 
   useEffect(() => {

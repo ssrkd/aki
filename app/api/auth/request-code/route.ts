@@ -28,6 +28,7 @@ export async function POST(req: NextRequest) {
       chatIds.push(process.env.TELEGRAM_CHAT_ID)
     }
 
+    // Проверяем telegram_users
     try {
       const { data: users } = await supabase
         .from('telegram_users')
@@ -44,6 +45,25 @@ export async function POST(req: NextRequest) {
       }
     } catch (e) {
       console.warn('telegram_users не найден или ошибка запроса:', e)
+    }
+
+    // Проверяем principles (tg_chat:...) как резервный канал
+    try {
+      const { data: principlesData } = await supabase
+        .from('principles')
+        .select('text')
+        .like('text', 'tg_chat:%')
+
+      if (principlesData) {
+        for (const p of principlesData) {
+          const id = p.text.replace('tg_chat:', '').trim()
+          if (id && !chatIds.includes(id)) {
+            chatIds.push(id)
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Ошибка чтения principles:', e)
     }
 
     // 3. Если есть кому отправить и есть токен

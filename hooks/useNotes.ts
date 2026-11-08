@@ -1,35 +1,66 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Note, NoteCategory } from '@/lib/types'
 
+let cachedNotes: Note[] | null = null
+
 export function useNotes() {
-  const [notes, setNotes] = useState<Note[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+  const [notes, setNotes] = useState<Note[]>(cachedNotes || [])
+  const [isLoading, setIsLoading] = useState(!cachedNotes)
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedNote, setSelectedNote] = useState<Note | null>(null)
+  const [selectedNote, setSelectedNote] = useState<Note | null>(cachedNotes && cachedNotes.length > 0 ? cachedNotes[0] : null)
+  const isFetchingRef = useRef(false)
 
-  const fetchNotes = useCallback(async () => {
-    setIsLoading(true)
-    const { data, error } = await supabase
-      .from('notes')
-      .select('*')
-      .order('updated_at', { ascending: false })
-    if (!error) {
-      setNotes(data || [])
-      // Автовыбор первой заметки
-      if (data && data.length > 0 && !selectedNote) {
-        setSelectedNote(data[0])
+  const fetchNotes = useCallback(async (isSilent = false) => {
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
+    if (!isSilent && !cachedNotes) setIsLoading(true)
+
+    try {
+      const { data, error } = await supabase
+        .from('notes')
+        .select('*')
+        .order('updated_at', { ascending: false })
+
+      if (!error && data) {
+        cachedNotes = data
+        setNotes(data)
+        setSelectedNote((current) => {
+          if (!current && data.length > 0) return data[0]
+          if (current) {
+            const found = data.find((n) => n.id === current.id)
+            return found || data[0] || null
+          }
+          return null
+        })
       }
+    } finally {
+      setIsLoading(false)
+      isFetchingRef.current = false
     }
-    setIsLoading(false)
-  }, [selectedNote])
+  }, [])
 
   useEffect(() => {
-    fetchNotes()
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+    fetchNotes(!!cachedNotes)
+
+    const handleSync = () => fetchNotes(true)
+    window.addEventListener('aki-db-changed', handleSync)
+    window.addEventListener('focus', handleSync)
+
+    const channel = supabase
+      .channel('notes-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, handleSync)
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('aki-db-changed', handleSync)
+      window.removeEventListener('focus', handleSync)
+      supabase.removeChannel(channel)
+    }
+  }, [fetchNotes])
 
   const addNote = async (title: string, category: NoteCategory, content?: string) => {
     const { data, error } = await supabase
@@ -37,9 +68,12 @@ export function useNotes() {
       .insert({ title, category, content: content || '' })
       .select()
       .single()
+
     if (!error && data) {
-      fetchNotes()
+      cachedNotes = [data, ...(cachedNotes || [])]
+      setNotes((prev) => [data, ...prev])
       setSelectedNote(data)
+      fetchNotes(true)
     }
     return !error
   }
@@ -49,31 +83,34 @@ export function useNotes() {
       .from('notes')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
+
     if (!error) {
       setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)))
-      if (selectedNote?.id === id) {
-        setSelectedNote((prev) => (prev ? { ...prev, ...updates } : null))
-      }
+      setSelectedNote((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev))
+      fetchNotes(true)
     }
     return !error
   }
 
   const deleteNote = async (id: string) => {
-    const { error } = await supabase.from('notes').delete().eq('id', id)
-    if (!error) {
-      fetchNotes()
-      if (selectedNote?.id === id) setSelectedNote(null)
+    setNotes((prev) => prev.filter((n) => n.id !== id))
+    if (selectedNote?.id === id) {
+      setSelectedNote((prev) => {
+        const remaining = notes.filter((n) => n.id !== id)
+        return remaining[0] || null
+      })
     }
+    await supabase.from('notes').delete().eq('id', id)
+    fetchNotes(true)
   }
 
-  // Фильтрация
   const filteredNotes = notes.filter((note) => {
-    const matchesCategory = selectedCategory === 'all' || note.category === selectedCategory
-    const matchesSearch =
+    const matchCategory = selectedCategory === 'all' || note.category === selectedCategory
+    const matchSearch =
       searchQuery === '' ||
       note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      note.content?.toLowerCase().includes(searchQuery.toLowerCase())
-    return matchesCategory && matchesSearch
+      (note.content && note.content.toLowerCase().includes(searchQuery.toLowerCase()))
+    return matchCategory && matchSearch
   })
 
   return {
@@ -89,7 +126,6 @@ export function useNotes() {
     addNote,
     updateNote,
     deleteNote,
-    refresh: fetchNotes,
+    refresh: () => fetchNotes(true),
   }
 }
-

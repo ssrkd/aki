@@ -1,25 +1,54 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Achievement, AchievementCategory } from '@/lib/types'
 
-export function useAchievements() {
-  const [achievements, setAchievements] = useState<Achievement[]>([])
-  const [isLoading, setIsLoading] = useState(true)
+let cachedAchievements: Achievement[] | null = null
 
-  const fetchAchievements = useCallback(async () => {
-    setIsLoading(true)
-    const { data, error } = await supabase
-      .from('achievements')
-      .select('*')
-      .order('achieved_at', { ascending: false })
-    if (!error) setAchievements(data || [])
-    setIsLoading(false)
+export function useAchievements() {
+  const [achievements, setAchievements] = useState<Achievement[]>(cachedAchievements || [])
+  const [isLoading, setIsLoading] = useState(!cachedAchievements)
+  const isFetchingRef = useRef(false)
+
+  const fetchAchievements = useCallback(async (isSilent = false) => {
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
+    if (!isSilent && !cachedAchievements) setIsLoading(true)
+
+    try {
+      const { data, error } = await supabase
+        .from('achievements')
+        .select('*')
+        .order('achieved_at', { ascending: false })
+
+      if (!error && data) {
+        cachedAchievements = data
+        setAchievements(data)
+      }
+    } finally {
+      setIsLoading(false)
+      isFetchingRef.current = false
+    }
   }, [])
 
   useEffect(() => {
-    fetchAchievements()
+    fetchAchievements(!!cachedAchievements)
+
+    const handleSync = () => fetchAchievements(true)
+    window.addEventListener('aki-db-changed', handleSync)
+    window.addEventListener('focus', handleSync)
+
+    const channel = supabase
+      .channel('achievements-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'achievements' }, handleSync)
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('aki-db-changed', handleSync)
+      window.removeEventListener('focus', handleSync)
+      supabase.removeChannel(channel)
+    }
   }, [fetchAchievements])
 
   const addAchievement = async (
@@ -28,19 +57,30 @@ export function useAchievements() {
     category: AchievementCategory,
     achieved_at: string
   ) => {
+    const tempAch: Achievement = {
+      id: 'temp-' + Date.now(),
+      title,
+      description: description || null,
+      category,
+      achieved_at,
+      created_at: new Date().toISOString(),
+    }
+    setAchievements((prev) => [tempAch, ...prev])
+
     const { error } = await supabase.from('achievements').insert({
       title,
       description: description || null,
       category,
       achieved_at,
     })
-    if (!error) fetchAchievements()
+    fetchAchievements(true)
     return !error
   }
 
   const deleteAchievement = async (id: string) => {
+    setAchievements((prev) => prev.filter((a) => a.id !== id))
     const { error } = await supabase.from('achievements').delete().eq('id', id)
-    if (!error) fetchAchievements()
+    fetchAchievements(true)
   }
 
   const now = new Date()
@@ -59,7 +99,6 @@ export function useAchievements() {
     stats,
     addAchievement,
     deleteAchievement,
-    refresh: fetchAchievements,
+    refresh: () => fetchAchievements(true),
   }
 }
-

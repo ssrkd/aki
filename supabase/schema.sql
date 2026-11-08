@@ -22,6 +22,14 @@ create table if not exists telegram_users (
   created_at timestamptz default now()
 );
 
+-- Таблица долговременной памяти и обучения aki AI
+create table if not exists ai_memory (
+  id uuid primary key default gen_random_uuid(),
+  category text default 'preference',
+  content text not null,
+  created_at timestamptz default now()
+);
+
 -- 2. Привычки
 create table if not exists habits (
   id uuid primary key default gen_random_uuid(),

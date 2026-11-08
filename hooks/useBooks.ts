@@ -1,26 +1,55 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Book, BookStatus } from '@/lib/types'
 
-export function useBooks() {
-  const [books, setBooks] = useState<Book[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [filterStatus, setFilterStatus] = useState<BookStatus | 'all'>('all')
+let cachedBooks: Book[] | null = null
 
-  const fetchBooks = useCallback(async () => {
-    setIsLoading(true)
-    const { data, error } = await supabase
-      .from('books')
-      .select('*')
-      .order('created_at', { ascending: false })
-    if (!error) setBooks(data || [])
-    setIsLoading(false)
+export function useBooks() {
+  const [books, setBooks] = useState<Book[]>(cachedBooks || [])
+  const [isLoading, setIsLoading] = useState(!cachedBooks)
+  const [filterStatus, setFilterStatus] = useState<BookStatus | 'all'>('all')
+  const isFetchingRef = useRef(false)
+
+  const fetchBooks = useCallback(async (isSilent = false) => {
+    if (isFetchingRef.current) return
+    isFetchingRef.current = true
+    if (!isSilent && !cachedBooks) setIsLoading(true)
+
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .select('*')
+        .order('created_at', { ascending: false })
+
+      if (!error && data) {
+        cachedBooks = data
+        setBooks(data)
+      }
+    } finally {
+      setIsLoading(false)
+      isFetchingRef.current = false
+    }
   }, [])
 
   useEffect(() => {
-    fetchBooks()
+    fetchBooks(!!cachedBooks)
+
+    const handleSync = () => fetchBooks(true)
+    window.addEventListener('aki-db-changed', handleSync)
+    window.addEventListener('focus', handleSync)
+
+    const channel = supabase
+      .channel('books-realtime')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'books' }, handleSync)
+      .subscribe()
+
+    return () => {
+      window.removeEventListener('aki-db-changed', handleSync)
+      window.removeEventListener('focus', handleSync)
+      supabase.removeChannel(channel)
+    }
   }, [fetchBooks])
 
   const addBook = async (
@@ -31,6 +60,18 @@ export function useBooks() {
     notes?: string,
     finished_at?: string
   ) => {
+    const tempBook: Book = {
+      id: 'temp-' + Date.now(),
+      title,
+      author,
+      status,
+      rating: rating || null,
+      notes: notes || null,
+      finished_at: finished_at || null,
+      created_at: new Date().toISOString(),
+    }
+    setBooks((prev) => [tempBook, ...prev])
+
     const { error } = await supabase.from('books').insert({
       title,
       author,
@@ -39,19 +80,21 @@ export function useBooks() {
       notes: notes || null,
       finished_at: finished_at || null,
     })
-    if (!error) fetchBooks()
+    fetchBooks(true)
     return !error
   }
 
   const updateBook = async (id: string, updates: Partial<Book>) => {
+    setBooks((prev) => prev.map((b) => (b.id === id ? { ...b, ...updates } : b)))
     const { error } = await supabase.from('books').update(updates).eq('id', id)
-    if (!error) fetchBooks()
+    fetchBooks(true)
     return !error
   }
 
   const deleteBook = async (id: string) => {
+    setBooks((prev) => prev.filter((b) => b.id !== id))
     const { error } = await supabase.from('books').delete().eq('id', id)
-    if (!error) fetchBooks()
+    fetchBooks(true)
   }
 
   const filteredBooks =
@@ -74,7 +117,6 @@ export function useBooks() {
     addBook,
     updateBook,
     deleteBook,
-    refresh: fetchBooks,
+    refresh: () => fetchBooks(true),
   }
 }
-

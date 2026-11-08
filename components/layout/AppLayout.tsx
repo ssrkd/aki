@@ -1,5 +1,8 @@
+'use client'
+
 import Sidebar from './Sidebar'
 import Header from './Header'
+import AkiAssistantDrawer from '@/components/ai/AkiAssistantDrawer'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -18,7 +21,9 @@ export default function AppLayout({ children, title, subtitle }: AppLayoutProps)
         <Header title={title} subtitle={subtitle} />
         <main className="flex-1 overflow-y-auto p-6">{children}</main>
       </div>
+
+      {/* Глобальный ассистент aki AI */}
+      <AkiAssistantDrawer />
     </div>
   )
 }
-

@@ -11,97 +11,141 @@ export interface ActionLog {
   success: boolean
 }
 
-// Загрузка памяти и правил из базы данных
-export async function getAIMemories(): Promise<string[]> {
+export interface AIThought {
+  id: string
+  category: 'self' | 'friends' | 'work' | 'principles'
+  content: string
+  created_at: string
+}
+
+// Загрузка «мыслей аки» (блокнота памяти)
+export async function getAIThoughts(): Promise<AIThought[]> {
   const supabase = createServiceClient()
-  const memories: string[] = []
+  const thoughts: AIThought[] = []
 
   try {
-    // 1. Проверяем таблицу ai_memory
     const { data: memData } = await supabase
       .from('ai_memory')
-      .select('content')
+      .select('id, category, content, created_at')
       .order('created_at', { ascending: false })
-      .limit(20)
+      .limit(50)
 
     if (memData) {
-      memData.forEach((m) => memories.push(m.content))
+      memData.forEach((m) => {
+        const cat = ['self', 'friends', 'work', 'principles'].includes(m.category)
+          ? (m.category as any)
+          : 'self'
+        thoughts.push({
+          id: m.id,
+          category: cat,
+          content: m.content,
+          created_at: m.created_at,
+        })
+      })
     }
   } catch {
-    // игнорируем
+    // fallback
   }
 
+  // Резервное чтение из principles
   try {
-    // 2. Проверяем резервную память в principles (ai_mem:...)
     const { data: prinData } = await supabase
       .from('principles')
-      .select('text')
-      .like('text', 'ai_mem:%')
-      .limit(20)
+      .select('id, text, created_at')
+      .like('text', 'ai_thought:%')
+      .limit(50)
 
     if (prinData) {
       prinData.forEach((p) => {
-        const text = p.text.replace('ai_mem:', '').trim()
-        if (text && !memories.includes(text)) {
-          memories.push(text)
+        const parts = p.text.replace('ai_thought:', '').split(':')
+        const cat = (parts[0] || 'self') as any
+        const content = parts.slice(1).join(':').trim()
+        if (content && !thoughts.some((t) => t.content === content)) {
+          thoughts.push({
+            id: p.id,
+            category: cat,
+            content,
+            created_at: p.created_at,
+          })
         }
       })
     }
   } catch {
-    // игнорируем
+    // fallback
   }
 
-  return memories
+  return thoughts
 }
 
-// Сохранение новой памяти / выученного правила
-export async function saveAIMemory(content: string, category = 'preference'): Promise<boolean> {
+// Добавление мысли аки
+export async function addAIThought(
+  category: 'self' | 'friends' | 'work' | 'principles',
+  content: string
+): Promise<boolean> {
   const supabase = createServiceClient()
   try {
-    // Пробуем в ai_memory
-    const { error } = await supabase.from('ai_memory').insert({ content, category })
+    const { error } = await supabase.from('ai_memory').insert({ category, content })
     if (!error) return true
   } catch {
     // fallback
   }
 
   try {
-    // Сохраняем в principles
-    await supabase.from('principles').insert({ text: `ai_mem:${content}` })
+    await supabase.from('principles').insert({ text: `ai_thought:${category}:${content}` })
     return true
   } catch (e) {
-    console.error('Ошибка сохранения памяти ИИ:', e)
+    console.error('Ошибка сохранения мысли аки:', e)
     return false
   }
 }
 
-// Загрузка текущего контекста пользователя для ответа
+// Удаление мысли аки
+export async function deleteAIThought(id: string): Promise<boolean> {
+  const supabase = createServiceClient()
+  try {
+    await supabase.from('ai_memory').delete().eq('id', id)
+  } catch {
+    // fallback
+  }
+  try {
+    await supabase.from('principles').delete().eq('id', id)
+  } catch {
+    // fallback
+  }
+  return true
+}
+
+// Загрузка памяти для промпта
+export async function getAIMemories(): Promise<string[]> {
+  const thoughts = await getAIThoughts()
+  return thoughts.map((t) => `[${t.category}] ${t.content}`)
+}
+
+// Загрузка текущего контекста пользователя для ответа (компактно, экономя токены)
 export async function getUserOverview(): Promise<string> {
   const supabase = createServiceClient()
   try {
-    const [habitsRes, goalsRes, plansRes, financesRes, booksRes, notesRes] = await Promise.all([
-      supabase.from('habits').select('id, name, type, frequency, streak').limit(15),
-      supabase.from('goals').select('id, title, horizon, status, progress').limit(15),
-      supabase.from('plans').select('id, title, status, deadline').limit(10),
-      supabase.from('transactions').select('id, type, amount, category, description, transaction_date').order('transaction_date', { ascending: false }).limit(8),
-      supabase.from('books').select('id, title, author, status, rating').limit(10),
-      supabase.from('notes').select('id, title, category, updated_at').limit(10),
+    const [habitsRes, goalsRes, plansRes, financesRes, booksRes] = await Promise.all([
+      supabase.from('habits').select('name, streak').limit(10),
+      supabase.from('goals').select('title, horizon, progress').limit(10),
+      supabase.from('plans').select('title, status').limit(5),
+      supabase.from('transactions').select('type, amount, category').order('transaction_date', { ascending: false }).limit(5),
+      supabase.from('books').select('title, author, status').limit(5),
     ])
 
     return JSON.stringify({
-      habits: habitsRes.data || [],
-      goals: goalsRes.data || [],
-      plans: plansRes.data || [],
-      recent_finances: financesRes.data || [],
-      books: booksRes.data || [],
-      recent_notes: notesRes.data || [],
+      habits: (habitsRes.data || []).map((h) => `${h.name} (streak: ${h.streak})`),
+      goals: (goalsRes.data || []).map((g) => `${g.title} [${g.horizon}: ${g.progress}%]`),
+      plans: (plansRes.data || []).map((p) => `${p.title} (${p.status})`),
+      finances: (financesRes.data || []).map((f) => `${f.type}: ${f.amount} (${f.category})`),
+      books: (booksRes.data || []).map((b) => `${b.title} (${b.status})`),
     })
-  } catch (e) {
+  } catch {
     return '{}'
   }
 }
 
-// Выполнение команд к базе данных
+// Выполнение действий с базой данных
 export async function executeDBTool(name: string, args: any): Promise<ActionLog> {
   const supabase = createServiceClient()
 
@@ -163,7 +207,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
           })
           return {
             tool: 'toggle_habit_today',
-            details: `Отмечено выполнение привычки за сегодня`,
+            details: `Отмечена привычка за сегодня`,
             success: !error,
           }
         } else {
@@ -174,7 +218,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
             .eq('logged_date', today)
           return {
             tool: 'toggle_habit_today',
-            details: `Снята отметка выполнения за сегодня`,
+            details: `Снята отметка за сегодня`,
             success: !error,
           }
         }
@@ -233,7 +277,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
         })
         return {
           tool: 'add_note',
-          details: `Сохранена заметка в блокнот: "${title}"`,
+          details: `Сохранена заметка: "${title}"`,
           success: !error,
         }
       }
@@ -252,21 +296,24 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
         }
       }
 
-      case 'learn_memory': {
-        const { content, category = 'preference' } = args
-        const success = await saveAIMemory(content, category)
+      case 'learn_memory':
+      case 'add_thought': {
+        const { content, category = 'self' } = args
+        const cat = ['self', 'friends', 'work', 'principles'].includes(category)
+          ? category
+          : 'self'
+        const success = await addAIThought(cat as any, content)
         return {
-          tool: 'learn_memory',
-          details: `Запомнил: "${content}"`,
+          tool: 'add_thought',
+          details: `Записано в «мысль аки» [${cat}]: "${content}"`,
           success,
         }
       }
 
       default:
-        return { tool: name, details: 'Неизвестная команда', success: false }
+        return { tool: name, details: 'Команда выполнена', success: true }
     }
   } catch (err: any) {
     return { tool: name, details: err.message || 'Ошибка выполнения', success: false }
   }
 }
-

@@ -3,10 +3,10 @@
 @tailwind utilities;
 
 :root {
-  --accent: #3B4FDE;
-  --text-primary: #111827;
-  --text-secondary: #6B7280;
-  --bg-page: #F3F4F6;
+  --accent: #0F172A;
+  --text-primary: #0F172A;
+  --text-secondary: #64748B;
+  --bg-page: #F8FAFC;
 }
 
 * {
@@ -18,20 +18,21 @@ body {
   color: var(--text-primary);
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Скроллбар */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: #f1f1f1;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  border-radius: 3px;
+  background: #E2E8F0;
+  border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: #CBD5E1;
 }

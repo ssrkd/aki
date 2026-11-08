@@ -2,7 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, LogOut, Sparkles, RefreshCw, Bot, Shield, CheckCircle2 } from 'lucide-react'
+import { Search, LogOut, RefreshCw, Bot, CheckCircle2 } from 'lucide-react'
 
 interface HeaderProps {
   title: string
@@ -15,7 +15,6 @@ export default function Header({ title, subtitle, onOpenAI }: HeaderProps) {
   const dropdownRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
 
-  // Закрытие дропдауна при клике вне его
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -34,47 +33,43 @@ export default function Header({ title, subtitle, onOpenAI }: HeaderProps) {
     }
   }
 
-  const handleRefresh = () => {
-    window.location.reload()
-  }
-
   return (
-    <header className="h-16 bg-white border-b border-gray-100 px-6 flex items-center justify-between sticky top-0 z-30 shadow-sm">
+    <header className="h-14 bg-white border-b border-slate-100 px-6 flex items-center justify-between sticky top-0 z-30 select-none">
       {/* Заголовок страницы */}
       <div>
-        <h1 className="text-lg font-semibold text-[#111827]">{title}</h1>
-        {subtitle && <p className="text-xs text-[#6B7280]">{subtitle}</p>}
+        <h1 className="text-sm font-semibold text-slate-900">{title}</h1>
+        {subtitle && <p className="text-[11px] text-slate-400">{subtitle}</p>}
       </div>
 
-      {/* Поиск, кнопка aki AI и аватарка с меню настроек */}
+      {/* Поиск и аватарка */}
       <div className="flex items-center gap-3">
-        {/* Кнопка вызова aki AI */}
+        {/* Кнопка aki AI */}
         <button
           onClick={() => {
             if (onOpenAI) onOpenAI()
             else window.dispatchEvent(new CustomEvent('open-aki-ai'))
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-100 text-[#3B4FDE] hover:shadow-sm hover:border-indigo-200 text-xs font-semibold transition-all"
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-800 text-xs font-medium transition-all"
         >
-          <Sparkles size={14} className="text-[#3B4FDE]" />
+          <img src="/photo/aki.webp" alt="aki" className="w-3.5 h-3.5 rounded-full object-cover" />
           <span>aki AI</span>
         </button>
 
         {/* Поле поиска */}
         <div className="relative">
           <Search
-            size={16}
-            className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6B7280]"
+            size={14}
+            className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400"
           />
           <input
             type="text"
             placeholder="Поиск..."
             className="
-              pl-9 pr-4 py-1.5 rounded-lg border border-gray-200
-              text-sm text-[#111827] placeholder:text-[#6B7280]
-              bg-[#F3F4F6] focus:bg-white
-              focus:outline-none focus:ring-2 focus:ring-[#3B4FDE] focus:border-transparent
-              transition-all duration-200 w-44 sm:w-52
+              pl-8 pr-3 py-1 rounded-lg border border-slate-200
+              text-xs text-slate-900 placeholder:text-slate-400
+              bg-slate-50 focus:bg-white
+              focus:outline-none focus:ring-1 focus:ring-slate-900 focus:border-transparent
+              transition-all w-36 sm:w-44
             "
           />
         </div>
@@ -83,47 +78,36 @@ export default function Header({ title, subtitle, onOpenAI }: HeaderProps) {
         <div className="relative" ref={dropdownRef}>
           <button
             onClick={() => setDropdownOpen(!dropdownOpen)}
-            className="relative flex items-center justify-center rounded-full p-0.5 hover:ring-2 hover:ring-[#3B4FDE]/40 transition-all focus:outline-none"
+            className="relative flex items-center justify-center rounded-full p-0.5 hover:ring-2 hover:ring-slate-900/10 transition-all focus:outline-none"
             title="Меню профиля и настроек"
           >
             <img
               src="/photo/srk.webp"
               alt="srk"
-              className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm ring-1 ring-slate-200"
+              className="w-8 h-8 rounded-full object-cover border border-slate-200 shadow-xs"
             />
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-white rounded-full" />
+            <span className="absolute bottom-0 right-0 w-2 h-2 bg-emerald-500 border border-white rounded-full" />
           </button>
 
           {/* Выпадающее меню настроек */}
           {dropdownOpen && (
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-100 py-2 z-50 animate-in fade-in zoom-in-95 duration-100">
-              {/* Профиль */}
-              <div className="px-4 py-2.5 border-b border-slate-100">
-                <div className="flex items-center gap-2.5">
-                  <img
-                    src="/photo/srk.webp"
-                    alt="srk"
-                    className="w-8 h-8 rounded-full object-cover"
-                  />
-                  <div>
-                    <p className="text-sm font-bold text-slate-800">Серик (srk)</p>
-                    <p className="text-[11px] text-emerald-600 flex items-center gap-1 font-medium">
-                      <CheckCircle2 size={11} /> В сети • aki online
-                    </p>
-                  </div>
-                </div>
+            <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-slate-100 py-1.5 z-50 animate-in fade-in zoom-in-95 duration-100">
+              <div className="px-3.5 py-2 border-b border-slate-100">
+                <p className="text-xs font-bold text-slate-900">Серик</p>
+                <p className="text-[10px] text-emerald-600 flex items-center gap-1">
+                  <CheckCircle2 size={10} /> в сети
+                </p>
               </div>
 
-              {/* Пункты меню */}
-              <div className="py-1">
+              <div className="py-1 text-xs">
                 <button
                   onClick={() => {
                     setDropdownOpen(false)
                     window.dispatchEvent(new CustomEvent('open-aki-ai'))
                   }}
-                  className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                  className="w-full px-3.5 py-1.5 text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                 >
-                  <Sparkles size={14} className="text-[#3B4FDE]" />
+                  <img src="/photo/aki.webp" alt="aki" className="w-3.5 h-3.5 rounded-full object-cover" />
                   <span>Открыть aki AI</span>
                 </button>
 
@@ -131,29 +115,28 @@ export default function Header({ title, subtitle, onOpenAI }: HeaderProps) {
                   href="https://t.me/srkandaki_bot"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                  className="w-full px-3.5 py-1.5 text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                 >
-                  <Bot size={14} className="text-blue-500" />
-                  <span>Telegram бот (@srkandaki_bot)</span>
+                  <Bot size={13} className="text-slate-500" />
+                  <span>Telegram бот</span>
                 </a>
 
                 <button
-                  onClick={handleRefresh}
-                  className="w-full px-4 py-2 text-left text-xs text-slate-700 hover:bg-slate-50 flex items-center gap-2.5 transition-colors"
+                  onClick={() => window.location.reload()}
+                  className="w-full px-3.5 py-1.5 text-left text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                 >
-                  <RefreshCw size={14} className="text-slate-500" />
-                  <span>Обновить данные</span>
+                  <RefreshCw size={13} className="text-slate-500" />
+                  <span>Обновить сайт</span>
                 </button>
               </div>
 
-              {/* Разделитель и кнопка выхода */}
               <div className="border-t border-slate-100 pt-1 mt-1">
                 <button
                   onClick={handleLogout}
-                  className="w-full px-4 py-2 text-left text-xs text-red-600 hover:bg-red-50 flex items-center gap-2.5 transition-colors font-medium"
+                  className="w-full px-3.5 py-1.5 text-left text-xs text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors font-medium"
                 >
-                  <LogOut size={14} />
-                  <span>Выйти из аккаунта</span>
+                  <LogOut size={13} />
+                  <span>Выйти</span>
                 </button>
               </div>
             </div>

@@ -62,8 +62,8 @@ export default function NotebookPage() {
                   w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-150
                   ${
                     selectedCategory === key
-                      ? 'bg-white text-[#3B4FDE] shadow-sm font-semibold'
-                      : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                   }
                 `}
               >
@@ -75,24 +75,24 @@ export default function NotebookPage() {
 
           <button
             onClick={() => setIsCreating(true)}
-            className="w-full mt-4 flex items-center justify-center gap-2 bg-[#3B4FDE] hover:bg-[#3242c7] text-white py-2 px-3 rounded-lg text-sm font-medium transition-all shadow-sm"
+            className="w-full mt-4 flex items-center justify-center gap-2 bg-slate-900 hover:bg-slate-800 text-white py-2 px-3 rounded-lg text-xs font-medium transition-all shadow-xs"
           >
-            <Plus size={16} />
+            <Plus size={15} />
             <span>Новая заметка</span>
           </button>
         </div>
 
         {/* Список заметок */}
-        <div className="w-72 border-r border-gray-100 flex flex-col bg-white">
-          <div className="p-3 border-b border-gray-100">
+        <div className="w-72 border-r border-slate-100 flex flex-col bg-white">
+          <div className="p-3 border-b border-slate-100">
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-2.5 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-2 text-slate-400" />
               <input
                 type="text"
                 placeholder="Поиск заметок..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:border-[#3B4FDE]"
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:border-slate-900"
               />
             </div>
           </div>

@@ -51,7 +51,7 @@ export default function AchievementsPage() {
             {achievements.map((achievement) => (
               <div key={achievement.id} className="relative">
                 {/* Точка на линии */}
-                <div className="absolute -left-9 top-4 w-3 h-3 rounded-full bg-[#3B4FDE] border-2 border-white shadow-sm" />
+                <div className="absolute -left-9 top-4 w-3 h-3 rounded-full bg-slate-900 border-2 border-white shadow-xs" />
                 <AchievementCard achievement={achievement} onDelete={deleteAchievement} />
               </div>
             ))}

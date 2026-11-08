@@ -1,36 +1,76 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAIMemories, getUserOverview, executeDBTool, ActionLog } from '@/lib/ai'
 
-const SYSTEM_PROMPT = `Ты — aki AI, персональный искусственный интеллект и личный главный советник пользователя (его зовут Серик / srk).
-Пиши строго со строчной буквы "aki AI" (не "Aki").
+const SYSTEM_PROMPT = `Ты — aki AI, персональный искусственный интеллект, умный собеседник и личный советник Серика (srk).
+Пиши имя строго со строчной буквы: "aki AI".
 
-ТВОИ КАЧЕСТВА И СТИЛЬ:
-- Ты умный, проницательный, лаконичный и организованный.
-- Ты раскладываешь всё по полочкам: чётко, структурированно, без воды.
-- Ты глубоко понимаешь контекст и психологию привычек, целей, планов и продуктивности.
-- Ты обладаешь полным доступом администратора и редактора к базе данных трекера aki.
-- Ты учишься на своих ошибках и замечаниях пользователя. Если пользователь поправляет тебя или просит что-то запомнить, ты фиксируешь это как правило.
+ЛИЧНОСТЬ И СТИЛЬ ОБЩЕНИЯ:
+- Ты умный, проницательный, глубокий и живой собеседник, а не сухой бот или секретарь.
+- Общайся на равных, тепло, уверенно, уважительно и по делу.
+- Умей поддерживать живой диалог, внимательно слушай Серика, держи нить разговора и помни всё, о чем вы говорили выше.
+- Если Серик предлагает тему (например, "ну давай о друзьях", "что думаешь о спорте" и т.п.), НЕ ПЫТАЙСЯ это просто формально зафиксировать. РАЗВИВАЙ беседу: задавай интересные, точные вопросы, делись мыслями, помогай раскрыть тему!
+- Не используй канцеляризмы, шаблоны и роботизированные фразы вроде "Чем я могу вам помочь сегодня".
 
-ДОСТУПНЫЕ ДЕЙСТВИЯ С БАЗОЙ ДАННЫХ (Actions):
-Если пользователь просит что-то добавить, изменить, запланировать или записать — выполняй это!
-Для выполнения действий верни в конце своего ответа JSON-блок:
+ПРАВИЛА ОФОРМЛЕНИЯ ТЕКСТА (СТРОГО!):
+- КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать двойные звездочки ** для выделения текста. НИКАКИХ **слово**!
+- Пиши чистым текстом без жирного markdown-шрифта.
+- Форматируй списки обычными дефисами или цифрами.
+
+ПРАВИЛО БЛОКНОТА «МЫСЛЬ АКИ» (ОЧЕНЬ ВАЖНО!):
+- КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО сохранять служебные реплики диалога! НИКОГДА не сохраняй фразы вроде "Серик спросил о...", "Серик хочет поговорить о...", "Серик поздоровался" и т.д.
+- Вызывай инструмент add_thought ИСКЛЮЧИТЕЛЬНО тогда, когда Серик сообщил РЕАЛЬНЫЙ, ЦЕННЫЙ ФАКТ о своей жизни, привычках, друзьях или ценностях (например: "моего лучшего друга зовут Асет", "я не ем мясо", "я работаю над стартапом"), ЛИБО когда Серик прямо сказал "запомни это" / "запиши в мысли".
+- Во всех остальных случаях просто веди интересный диалог без вызова add_thought.
+
+УПРАВЛЕНИЕ ТРЕКЕРОМ (ДЕЙСТВИЯ С БАЗОЙ):
+У тебя есть полный доступ к трекеру aki. Если Серик просит добавить/изменить цель, привычку, транзакцию, план, книгу или заметку, выполни это через JSON-блок в самом конце своего ответа:
 \`\`\`json
 {
   "actions": [
-    { "tool": "create_goal", "args": { "title": "Название", "horizon": "1year"|"5years"|"10years", "description": "" } },
+    { "tool": "create_goal", "args": { "title": "Название", "horizon": "1year"|"5years"|"10years" } },
     { "tool": "update_goal_progress", "args": { "goal_id": "id", "progress": 50 } },
-    { "tool": "create_habit", "args": { "name": "Название", "type": "positive"|"negative", "frequency": "daily" } },
+    { "tool": "create_habit", "args": { "name": "Название", "type": "positive"|"negative" } },
     { "tool": "toggle_habit_today", "args": { "habit_id": "id", "completed": true } },
     { "tool": "add_transaction", "args": { "type": "income"|"expense", "amount": 1000, "category": "Еда", "description": "Обед" } },
-    { "tool": "create_plan", "args": { "title": "Название плана", "deadline": "2026-12-31", "tasks": ["Задача 1", "Задача 2"] } },
-    { "tool": "add_note", "args": { "title": "Заголовок", "category": "ideas"|"work"|"self"|"family"|"other", "content": "Текст заметки" } },
-    { "tool": "add_book", "args": { "title": "Книга", "author": "Автор", "status": "reading"|"want_to_read"|"finished" } },
-    { "tool": "learn_memory", "args": { "content": "Правило или предпочтение пользователя", "category": "rule"|"preference" } }
+    { "tool": "create_plan", "args": { "title": "План", "tasks": ["Задача 1"] } },
+    { "tool": "add_note", "args": { "title": "Заголовок", "category": "ideas", "content": "Текст" } },
+    { "tool": "add_book", "args": { "title": "Книга", "author": "Автор", "status": "want" } },
+    { "tool": "add_thought", "args": { "content": "Конкретный факт о Серике", "category": "self"|"friends"|"work"|"principles" } }
   ]
 }
-\`\`\`
+\`\`\``
 
-Отвечай на русском языке, стильно, чётко и доброжелательно.`
+async function callGroq(apiKey: string, messages: any[], systemText: string): Promise<string> {
+  const fullMessages = [{ role: 'system', content: systemText }, ...messages]
+  const models = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b']
+
+  for (const model of models) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model,
+          messages: fullMessages,
+          max_tokens: 1024,
+          temperature: 0.6,
+        }),
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const text = data.choices?.[0]?.message?.content
+        if (text) return text
+      }
+    } catch {
+      // fallback
+    }
+  }
+
+  throw new Error('All Groq models failed')
+}
 
 async function callGemini(apiKey: string, messages: any[], systemText: string): Promise<string> {
   const contents = messages.map((m: any) => ({
@@ -46,8 +86,8 @@ async function callGemini(apiKey: string, messages: any[], systemText: string): 
       systemInstruction: { parts: [{ text: systemText }] },
       contents,
       generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
+        temperature: 0.6,
+        maxOutputTokens: 1024,
       },
     }),
   })
@@ -61,40 +101,6 @@ async function callGemini(apiKey: string, messages: any[], systemText: string): 
   const candidate = data.candidates?.[0]?.content?.parts?.[0]?.text
   if (!candidate) throw new Error('Empty response from Gemini')
   return candidate
-}
-
-async function callGroq(apiKey: string, messages: any[], systemText: string): Promise<string> {
-  const fullMessages = [{ role: 'system', content: systemText }, ...messages]
-
-  const models = ['openai/gpt-oss-120b', 'openai/gpt-oss-20b', 'qwen/qwen3.8-27b']
-
-  for (const model of models) {
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          model,
-          messages: fullMessages,
-          max_tokens: 2048,
-          temperature: 0.7,
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        const text = data.choices?.[0]?.message?.content
-        if (text) return text
-      }
-    } catch {
-      // пробуем следующую модель
-    }
-  }
-
-  throw new Error('All Groq models failed')
 }
 
 async function callOpenRouter(apiKey: string, messages: any[], systemText: string): Promise<string> {
@@ -112,8 +118,8 @@ async function callOpenRouter(apiKey: string, messages: any[], systemText: strin
         body: JSON.stringify({
           model,
           messages: fullMessages,
-          max_tokens: 2048,
-          temperature: 0.7,
+          max_tokens: 1024,
+          temperature: 0.6,
         }),
       })
 
@@ -123,7 +129,7 @@ async function callOpenRouter(apiKey: string, messages: any[], systemText: strin
         if (text) return text
       }
     } catch {
-      // пробуем следующую
+      // fallback
     }
   }
 
@@ -138,25 +144,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Messages required' }, { status: 400 })
     }
 
-    // Загружаем текущие данные и память пользователя
     const [memories, overview] = await Promise.all([getAIMemories(), getUserOverview()])
 
     let memoryContext = ''
     if (memories.length > 0) {
-      memoryContext = `\n\nВЫУЧЕННЫЕ ПРАВИЛА И ПАМЯТЬ О ПОЛЬЗОВАТЕЛЕ:\n${memories.map((m) => `- ${m}`).join('\n')}`
+      memoryContext = `\n\nБЛОКНОТ «МЫСЛЬ АКИ» (ЗНАНИЯ О СЕРИКЕ):\n${memories.slice(0, 15).join('\n')}`
     }
 
     const currentSystemText =
       SYSTEM_PROMPT +
       memoryContext +
-      `\n\nАКТУАЛЬНОЕ СОСТОЯНИЕ БАЗЫ ДАННЫХ ПОЛЬЗОВАТЕЛЯ:\n${overview}`
+      `\n\nТЕКУЩИЕ ДАННЫЕ В ТРЕКЕРЕ СЕРИКА:\n${overview}`
 
-    // Каскад ключей и провайдеров
+    // Быстрый каскад: Groq первый (скорость <1с), затем резервы
     const providers = [
-      { name: 'Gemini-1', fn: () => callGemini(process.env.GEMINI_API_KEY_1 || '', messages, currentSystemText) },
-      { name: 'Gemini-2', fn: () => callGemini(process.env.GEMINI_API_KEY_2 || '', messages, currentSystemText) },
       { name: 'Groq-1', fn: () => callGroq(process.env.GROQ_API_KEY_1 || '', messages, currentSystemText) },
       { name: 'Groq-2', fn: () => callGroq(process.env.GROQ_API_KEY_2 || '', messages, currentSystemText) },
+      { name: 'Gemini-1', fn: () => callGemini(process.env.GEMINI_API_KEY_1 || '', messages, currentSystemText) },
+      { name: 'Gemini-2', fn: () => callGemini(process.env.GEMINI_API_KEY_2 || '', messages, currentSystemText) },
       { name: 'OpenRouter-1', fn: () => callOpenRouter(process.env.OPENROUTER_API_KEY_1 || '', messages, currentSystemText) },
       { name: 'OpenRouter-2', fn: () => callOpenRouter(process.env.OPENROUTER_API_KEY_2 || '', messages, currentSystemText) },
     ]
@@ -170,7 +175,7 @@ export async function POST(req: NextRequest) {
         usedProvider = p.name
         break
       } catch (err: any) {
-        console.warn(`Провайдер ${p.name} не сработал:`, err.message)
+        console.warn(`Провайдер ${p.name} ошибка:`, err.message)
       }
     }
 
@@ -181,7 +186,7 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Извлечение действий из ответа
+    // Выполнение действий
     const actions: ActionLog[] = []
     let cleanReply = rawReply
 
@@ -195,12 +200,14 @@ export async function POST(req: NextRequest) {
             actions.push(res)
           }
         }
-        // Убираем технический блок JSON из текста для пользователя
         cleanReply = rawReply.replace(/```json\s*\{[\s\S]*?\}\s*```/g, '').trim()
       } catch (e) {
-        console.warn('Ошибка парсинга действий ИИ:', e)
+        console.warn('Ошибка парсинга действий:', e)
       }
     }
+
+    // СТРОГО удаляем любые ** из ответа
+    cleanReply = cleanReply.replace(/\*\*/g, '').trim()
 
     return NextResponse.json({
       reply: cleanReply,
@@ -212,4 +219,3 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
   }
 }
-

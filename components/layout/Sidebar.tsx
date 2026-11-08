@@ -31,17 +31,17 @@ export default function Sidebar() {
   }
 
   return (
-    <aside className="w-[240px] min-w-[240px] h-screen bg-white border-r border-gray-100 shadow-sm flex flex-col sticky top-0 z-20">
+    <aside className="w-[220px] min-w-[220px] h-screen bg-white border-r border-slate-100 flex flex-col sticky top-0 z-20 select-none">
       {/* Логотип */}
-      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+      <div className="px-5 py-5 border-b border-slate-100 flex items-center justify-between">
         <Link href="/habits" className="flex items-center gap-2 group">
-          <span className="text-2xl font-bold text-[#111827] tracking-tight group-hover:text-[#3B4FDE] transition-colors">aki</span>
-          <span className="w-2 h-2 rounded-full bg-[#3B4FDE] animate-pulse" />
+          <span className="text-xl font-bold tracking-tight text-slate-900">aki</span>
+          <span className="w-1.5 h-1.5 rounded-full bg-slate-900" />
         </Link>
       </div>
 
       {/* Навигация */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
@@ -50,44 +50,43 @@ export default function Sidebar() {
               href={href}
               prefetch={true}
               className={`
-                flex items-center gap-3 px-3 py-2.5 rounded-xl
-                text-sm font-medium
-                transition-all duration-150
+                flex items-center gap-2.5 px-3 py-2 rounded-xl
+                text-xs font-medium transition-all
                 ${
                   isActive
-                    ? 'bg-[#3B4FDE] text-white shadow-sm shadow-indigo-500/20'
-                    : 'text-[#6B7280] hover:bg-slate-50 hover:text-[#111827]'
+                    ? 'bg-slate-900 text-white font-semibold'
+                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-50'
                 }
               `}
             >
-              <Icon size={18} />
+              <Icon size={16} strokeWidth={isActive ? 2.2 : 1.8} />
               <span>{label}</span>
             </Link>
           )
         })}
 
-        {/* Разделитель и кнопка aki AI */}
+        {/* Кнопка вызова aki AI */}
         <div className="pt-3 mt-3 border-t border-slate-100">
           <button
             onClick={handleOpenAI}
-            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold text-[#3B4FDE] bg-gradient-to-r from-indigo-50 to-blue-50 hover:from-indigo-100 hover:to-blue-100 border border-indigo-100 transition-all shadow-sm"
+            className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-200/80 transition-all"
           >
-            <div className="flex items-center gap-2.5">
-              <Sparkles size={18} className="text-[#3B4FDE]" />
+            <div className="flex items-center gap-2">
+              <img src="/photo/aki.webp" alt="aki" className="w-4 h-4 rounded-full object-cover" />
               <span>aki AI</span>
             </div>
-            <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-md bg-[#3B4FDE] text-white">PRO</span>
+            <span className="text-[10px] text-slate-400 font-mono">⌘J</span>
           </button>
         </div>
       </nav>
 
-      {/* Версия / профиль внизу */}
-      <div className="px-5 py-3.5 border-t border-gray-100 flex items-center justify-between">
+      {/* Профиль внизу */}
+      <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <img src="/photo/srk.webp" alt="srk" className="w-6 h-6 rounded-full object-cover" />
-          <span className="text-xs font-semibold text-slate-700">srk</span>
+          <img src="/photo/srk.webp" alt="srk" className="w-6 h-6 rounded-full object-cover ring-1 ring-slate-200" />
+          <span className="text-xs font-medium text-slate-700">Серик</span>
         </div>
-        <p className="text-[11px] text-[#94a3b8]">aki v0.2</p>
+        <span className="text-[10px] text-slate-400 font-mono">v0.2</span>
       </div>
     </aside>
   )

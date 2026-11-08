@@ -19,8 +19,8 @@ export default function FinanceChart({ data }: FinanceChartProps) {
           contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />
-        <Bar dataKey="income" name="Доходы" fill="#3B4FDE" radius={[4, 4, 0, 0]} />
-        <Bar dataKey="expense" name="Расходы" fill="#EF4444" radius={[4, 4, 0, 0]} />
+        <Bar dataKey="income" name="Доходы" fill="#0F172A" radius={[4, 4, 0, 0]} isAnimationActive={false} />
+        <Bar dataKey="expense" name="Расходы" fill="#94A3B8" radius={[4, 4, 0, 0]} isAnimationActive={false} />
       </BarChart>
     </ResponsiveContainer>
   )

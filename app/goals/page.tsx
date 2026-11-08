@@ -5,29 +5,26 @@ import AppLayout from '@/components/layout/AppLayout'
 import GoalCard from '@/components/goals/GoalCard'
 import { useGoals } from '@/hooks/useGoals'
 import { GoalHorizon } from '@/lib/types'
-import { Target, Plus, CheckCircle2, TrendingUp, Sparkles, Clock, Calendar } from 'lucide-react'
+import { Target, Plus, CheckCircle2, TrendingUp, Clock } from 'lucide-react'
 
-const HORIZONS: { key: GoalHorizon; title: string; subtitle: string; color: string; badge: string }[] = [
-  { key: '1year', title: 'На 1 год', subtitle: 'Краткосрочные цели', color: 'border-blue-500', badge: 'bg-blue-50 text-blue-700' },
-  { key: '5years', title: 'На 5 лет', subtitle: 'Среднесрочные ориентиры', color: 'border-indigo-500', badge: 'bg-indigo-50 text-indigo-700' },
-  { key: '10years', title: 'На 10 лет', subtitle: 'Стратегическое видение', color: 'border-purple-500', badge: 'bg-purple-50 text-purple-700' },
+const HORIZONS: { key: GoalHorizon; title: string; subtitle: string }[] = [
+  { key: '1year', title: 'На 1 год', subtitle: 'Ближайшие цели' },
+  { key: '5years', title: 'На 5 лет', subtitle: 'Среднесрочные' },
+  { key: '10years', title: 'На 10 лет', subtitle: 'Долгосрочные' },
 ]
 
 export default function GoalsPage() {
   const { goals, goalsByHorizon, addGoal, deleteGoal, updateProgress, updateStatus, updateGoal } = useGoals()
 
-  // Поля быстрого ввода для каждой колонки
   const [inlineInputs, setInlineInputs] = useState<Record<GoalHorizon, string>>({
     '1year': '',
     '5years': '',
     '10years': '',
   })
 
-  // Глобальное быстрое поле сверху
   const [topInput, setTopInput] = useState('')
   const [topHorizon, setTopHorizon] = useState<GoalHorizon>('1year')
 
-  // Статистика
   const totalGoals = goals.length
   const completedGoals = goals.filter((g) => g.status === 'completed' || g.progress >= 100).length
   const activeGoals = totalGoals - completedGoals
@@ -47,67 +44,40 @@ export default function GoalsPage() {
     setTopInput('')
   }
 
-  const handleUpdateTitle = (id: string, newTitle: string) => {
-    updateGoal(id, { title: newTitle })
-  }
-
   return (
-    <AppLayout title="Цели" subtitle="Стратегическое планирование на 1, 5 и 10 лет">
-      {/* Верхняя статистика */}
+    <AppLayout title="Цели" subtitle="Стратегия и фокус на будущее">
+      {/* Статистика */}
       <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-          <div className="p-2.5 bg-indigo-50 rounded-xl text-[#3B4FDE]">
-            <Target size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Всего целей</p>
-            <p className="text-2xl font-bold text-slate-900">{totalGoals}</p>
-          </div>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
+          <p className="text-[11px] text-slate-400 font-medium mb-1">Всего целей</p>
+          <p className="text-xl font-bold text-slate-900">{totalGoals}</p>
         </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-          <div className="p-2.5 bg-blue-50 rounded-xl text-blue-600">
-            <Clock size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">В процессе</p>
-            <p className="text-2xl font-bold text-slate-900">{activeGoals}</p>
-          </div>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
+          <p className="text-[11px] text-slate-400 font-medium mb-1">В процессе</p>
+          <p className="text-xl font-bold text-slate-900">{activeGoals}</p>
         </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-          <div className="p-2.5 bg-emerald-50 rounded-xl text-emerald-600">
-            <CheckCircle2 size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Достигнуто</p>
-            <p className="text-2xl font-bold text-slate-900">{completedGoals}</p>
-          </div>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
+          <p className="text-[11px] text-slate-400 font-medium mb-1">Достигнуто</p>
+          <p className="text-xl font-bold text-slate-900">{completedGoals}</p>
         </div>
-
-        <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-          <div className="p-2.5 bg-purple-50 rounded-xl text-purple-600">
-            <TrendingUp size={20} />
-          </div>
-          <div>
-            <p className="text-xs text-slate-500 font-medium">Средний прогресс</p>
-            <p className="text-2xl font-bold text-[#3B4FDE]">{avgProgress}%</p>
-          </div>
+        <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
+          <p className="text-[11px] text-slate-400 font-medium mb-1">Средний прогресс</p>
+          <p className="text-xl font-bold text-slate-900">{avgProgress}%</p>
         </div>
       </div>
 
-      {/* Верхняя панель мгновенного добавления (без модалок) */}
-      <form onSubmit={handleTopAdd} className="bg-white rounded-2xl p-3 shadow-sm border border-slate-100 mb-6 flex flex-wrap items-center gap-2">
-        <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+      {/* Быстрое добавление сверху */}
+      <form onSubmit={handleTopAdd} className="bg-white rounded-xl p-2.5 border border-slate-100 shadow-card mb-6 flex items-center gap-2">
+        <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-lg">
           {HORIZONS.map((h) => (
             <button
               key={h.key}
               type="button"
               onClick={() => setTopHorizon(h.key)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              className={`px-2.5 py-1 rounded-md text-xs font-medium transition-all ${
                 topHorizon === h.key
-                  ? 'bg-white text-[#3B4FDE] shadow-xs'
-                  : 'text-slate-600 hover:text-slate-900'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'text-slate-500 hover:text-slate-900'
               }`}
             >
               {h.title}
@@ -119,44 +89,43 @@ export default function GoalsPage() {
           type="text"
           value={topInput}
           onChange={(e) => setTopInput(e.target.value)}
-          placeholder="⚡ Сразу напишите цель и нажмите Enter (без всплывающих окон)..."
-          className="flex-1 px-4 py-2 text-sm text-slate-800 placeholder:text-slate-400 bg-transparent outline-none"
+          placeholder="Напишите цель и нажмите Enter..."
+          className="flex-1 px-3 py-1.5 text-xs text-slate-800 placeholder:text-slate-400 bg-transparent outline-none"
         />
 
         <button
           type="submit"
           disabled={!topInput.trim()}
-          className="px-4 py-2 bg-[#3B4FDE] hover:bg-[#2d3fb5] disabled:opacity-40 text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-sm"
+          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-white rounded-lg text-xs font-medium flex items-center gap-1 transition-colors"
         >
-          <Plus size={15} />
-          <span>Добавить цель</span>
+          <Plus size={14} />
+          <span>Добавить</span>
         </button>
       </form>
 
-      {/* Колонки целей по горизонтам */}
+      {/* Колонки горизонтов */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        {HORIZONS.map(({ key, title, subtitle, badge }) => {
+        {HORIZONS.map(({ key, title, subtitle }) => {
           const horizonGoals = goalsByHorizon[key] || []
           const currentVal = inlineInputs[key] || ''
 
           return (
             <div
               key={key}
-              className="bg-slate-50/70 border border-slate-200/80 rounded-3xl p-4 flex flex-col shadow-xs"
+              className="bg-slate-50/70 border border-slate-200/70 rounded-2xl p-4 flex flex-col shadow-xs"
             >
-              {/* Шапка колонки */}
               <div className="flex items-center justify-between mb-2">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">{title}</h3>
-                  <p className="text-[11px] text-slate-500">{subtitle}</p>
+                  <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider">{title}</h3>
+                  <p className="text-[10px] text-slate-400">{subtitle}</p>
                 </div>
-                <span className={`text-xs font-bold px-2.5 py-0.5 rounded-full ${badge}`}>
+                <span className="text-[11px] font-mono text-slate-500 bg-white px-2 py-0.5 rounded-full border border-slate-200">
                   {horizonGoals.length}
                 </span>
               </div>
 
-              {/* Мгновенный инлайн ввод в начале колонки */}
-              <div className="my-3">
+              {/* Инлайн-ввод прямо в колонке */}
+              <div className="my-2.5">
                 <input
                   type="text"
                   value={currentVal}
@@ -169,19 +138,16 @@ export default function GoalsPage() {
                       handleInlineAdd(key)
                     }
                   }}
-                  placeholder={`+ Новая цель ${title.toLowerCase()}... Enter`}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-800 placeholder:text-slate-400 outline-none focus:ring-2 focus:ring-[#3B4FDE] focus:border-transparent shadow-xs transition-all"
+                  placeholder={`+ ${title.toLowerCase()}... Enter`}
+                  className="w-full px-3 py-2 rounded-xl border border-dashed border-slate-200 hover:border-slate-300 focus:border-slate-900 focus:border-solid bg-white text-xs text-slate-800 placeholder:text-slate-400 outline-none transition-all shadow-xs"
                 />
               </div>
 
               {/* Список целей */}
-              <div className="space-y-3 min-h-[160px]">
+              <div className="space-y-2.5 min-h-[140px]">
                 {horizonGoals.length === 0 ? (
-                  <div className="bg-white/60 border border-dashed border-slate-200 rounded-2xl p-8 text-center">
-                    <p className="text-xs text-slate-400">Пока нет целей в этом горизонте.</p>
-                    <p className="text-[11px] text-slate-400 mt-1">
-                      Напишите в поле выше и нажмите Enter!
-                    </p>
+                  <div className="border border-dashed border-slate-200 rounded-xl p-6 text-center bg-white/40">
+                    <p className="text-xs text-slate-400">Пока нет целей</p>
                   </div>
                 ) : (
                   horizonGoals.map((goal) => (
@@ -191,7 +157,7 @@ export default function GoalsPage() {
                       onDelete={deleteGoal}
                       onUpdateProgress={updateProgress}
                       onUpdateStatus={updateStatus}
-                      onUpdateTitle={handleUpdateTitle}
+                      onUpdateTitle={(id, title) => updateGoal(id, { title })}
                     />
                   ))
                 )}

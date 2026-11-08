@@ -8,7 +8,6 @@ interface HabitCalendarProps {
 }
 
 export default function HabitCalendar({ logs, habitId }: HabitCalendarProps) {
-  // Последние 7 недель (49 дней)
   const days: { date: string; completed: boolean; isToday: boolean }[] = []
   const today = new Date()
 
@@ -23,7 +22,6 @@ export default function HabitCalendar({ logs, habitId }: HabitCalendarProps) {
     })
   }
 
-  // Разбиваем по неделям
   const weeks: typeof days[] = []
   for (let i = 0; i < days.length; i += 7) {
     weeks.push(days.slice(i, i + 7))
@@ -38,9 +36,9 @@ export default function HabitCalendar({ logs, habitId }: HabitCalendarProps) {
               key={day.date}
               title={day.date}
               className={`
-                w-3 h-3 rounded-sm
-                ${day.completed ? 'bg-[#3B4FDE]' : 'bg-gray-100'}
-                ${day.isToday ? 'ring-1 ring-[#3B4FDE]' : ''}
+                w-2.5 h-2.5 rounded-[2px] transition-colors
+                ${day.completed ? 'bg-slate-900' : 'bg-slate-100'}
+                ${day.isToday ? 'ring-1 ring-slate-900' : ''}
               `}
             />
           ))}
@@ -49,4 +47,3 @@ export default function HabitCalendar({ logs, habitId }: HabitCalendarProps) {
     </div>
   )
 }
-

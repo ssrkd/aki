@@ -73,8 +73,8 @@ export default function PlanCard({ plan, onDelete, onUpdateStatus, onToggleTask,
             <span>{completedCount} из {tasks.length} задач</span>
             <span>{progress}%</span>
           </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-            <div className="h-full bg-[#3B4FDE] rounded-full transition-all" style={{ width: `${progress}%` }} />
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <div className="h-full bg-slate-900 rounded-full transition-all" style={{ width: `${progress}%` }} />
           </div>
         </div>
       )}
@@ -85,15 +85,15 @@ export default function PlanCard({ plan, onDelete, onUpdateStatus, onToggleTask,
           <div key={task.id} className="flex items-center gap-2 group/task">
             <button onClick={() => onToggleTask(task.id, task.completed)}>
               {task.completed
-                ? <CheckSquare size={15} className="text-[#3B4FDE]" />
-                : <Square size={15} className="text-gray-300" />
+                ? <CheckSquare size={15} className="text-slate-900" />
+                : <Square size={15} className="text-slate-300" />
               }
             </button>
-            <span className={`text-xs flex-1 ${task.completed ? 'line-through text-[#6B7280]' : 'text-[#111827]'}`}>
+            <span className={`text-xs flex-1 ${task.completed ? 'line-through text-slate-400' : 'text-slate-800'}`}>
               {task.title}
             </span>
             <button onClick={() => onDeleteTask(task.id)}
-              className="text-transparent group-hover/task:text-gray-300 hover:text-red-400 transition-colors">
+              className="text-transparent group-hover/task:text-slate-300 hover:text-red-400 transition-colors">
               <Trash2 size={11} />
             </button>
           </div>
@@ -110,13 +110,13 @@ export default function PlanCard({ plan, onDelete, onUpdateStatus, onToggleTask,
             onChange={(e) => setNewTask(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Enter') handleAddTask(); if (e.key === 'Escape') setShowTaskInput(false) }}
             placeholder="Название задачи..."
-            className="flex-1 px-2 py-1 text-xs rounded border border-gray-200 focus:outline-none focus:ring-1 focus:ring-[#3B4FDE]"
+            className="flex-1 px-2.5 py-1 text-xs rounded-lg border border-slate-200 focus:outline-none focus:ring-1 focus:ring-slate-900"
           />
-          <button onClick={handleAddTask} className="text-xs text-[#3B4FDE] font-medium">OK</button>
+          <button onClick={handleAddTask} className="text-xs text-slate-900 font-medium">OK</button>
         </div>
       ) : (
         <button onClick={() => setShowTaskInput(true)}
-          className="flex items-center gap-1 text-xs text-[#6B7280] hover:text-[#3B4FDE] transition-colors mb-3">
+          className="flex items-center gap-1 text-xs text-slate-400 hover:text-slate-900 transition-colors mb-3">
           <Plus size={12} /> Добавить задачу
         </button>
       )}

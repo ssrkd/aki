@@ -104,3 +104,4 @@ export function usePeople() {
 
   return { people, loading, addPerson, updatePerson, deletePerson, refresh: fetchPeople }
 }
+

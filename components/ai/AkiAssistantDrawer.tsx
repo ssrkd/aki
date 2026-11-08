@@ -533,7 +533,7 @@ export default function AkiAssistantDrawer() {
                       className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-xs flex items-start justify-between gap-2 group"
                     >
                       <div>
-                        <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 mr-1.5">
+                        <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 mr-2 inline-block">
                           {t.category === 'self'
                             ? 'Обо мне'
                             : t.category === 'friends'
@@ -543,7 +543,7 @@ export default function AkiAssistantDrawer() {
                             : 'Принцип'}
                         </span>
                         <span className="text-xs text-slate-800 leading-relaxed">
-                          {t.content}
+                          {t.content.replace(/^(?:Друг|Обо мне|Работа|Принцип):\s*/i, '')}
                         </span>
                       </div>
                       <button

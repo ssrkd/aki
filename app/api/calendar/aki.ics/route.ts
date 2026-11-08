@@ -52,7 +52,27 @@ export async function GET(req: NextRequest) {
     }
 
     // 2. Дни рождения людей из карточек
-    for (const person of peopleRes.data || []) {
+    let peopleList = peopleRes.data || []
+    if (peopleList.length === 0) {
+      // Fallback: читаем из ai_memory
+      try {
+        const { data: mems } = await supabase.from('ai_memory').select('id, content').eq('category', 'friends')
+        if (mems) {
+          peopleList = mems.map((m: any) => {
+            const bdayMatch = m.content.match(/день рождения:\s*(\d{4}-\d{2}-\d{2}|\d{2}-\d{2})/i)
+            const nameMatch = m.content.split(',')[0].replace(/^Друг:\s*/i, '').trim()
+            return {
+              id: m.id,
+              name: nameMatch || 'Друг',
+              relation: 'друг',
+              birthday: bdayMatch ? bdayMatch[1] : null,
+            }
+          }).filter((p: any) => p.birthday)
+        }
+      } catch {}
+    }
+
+    for (const person of peopleList) {
       if (!person.birthday) continue
       // birthday может быть 'YYYY-MM-DD' или 'MM-DD'
       const parts = person.birthday.split('-')

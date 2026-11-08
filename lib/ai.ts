@@ -409,9 +409,10 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
 
         // Также обязательно сохраняем в «мысль аки» для контекста
         const factDetails = [
-          `Друг: ${personName}`,
+          personName,
           age ? `возраст: ${age}` : '',
           city ? `город: ${city}` : '',
+          birthday ? `день рождения: ${birthday}` : '',
           occupation ? `занятость: ${occupation}` : '',
           notes ? `детали: ${notes}` : '',
         ]

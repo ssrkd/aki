@@ -332,6 +332,48 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
           return { tool: 'save_person', details: 'Не указано имя', success: false }
         }
 
+        // КРИТИЧЕСКИ ВАЖНО: Серик — это САМ ВЛАДЕЛЕЦ, а не друг!
+        const isSelf = ['серик', 'серика', 'серику', 'сериком', 'серике', 'srk', 'я', 'себя'].includes(
+          personName.toLowerCase().trim()
+        )
+
+        if (isSelf) {
+          const selfFact = [
+            'Серик (владелец)',
+            age ? `возраст: ${age}` : '',
+            city ? `город: ${city}` : '',
+            birthday ? `день рождения: ${birthday}` : '',
+            occupation ? `занятость: ${occupation}` : '',
+            notes ? `детали: ${notes}` : '',
+          ]
+            .filter(Boolean)
+            .join(', ')
+
+          // Ищем существующую запись в self и обновляем
+          try {
+            const { data: existingSelf } = await supabase
+              .from('ai_memory')
+              .select('id')
+              .eq('category', 'self')
+              .ilike('content', '%серик%')
+              .limit(1)
+
+            if (existingSelf && existingSelf.length > 0) {
+              await supabase.from('ai_memory').update({ content: selfFact }).eq('id', existingSelf[0].id)
+            } else {
+              await addAIThought('self', selfFact)
+            }
+          } catch {
+            await addAIThought('self', selfFact)
+          }
+
+          return {
+            tool: 'save_person',
+            details: `Обновлены данные о Серике (обо мне): ${age ? age + ' лет, ' : ''}${city ? 'г. ' + city : ''}`,
+            success: true,
+          }
+        }
+
         // Автоматическая генерация стильной аватарки по имени
         const avatarUrl =
           args.avatar_url ||
@@ -339,7 +381,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
 
         let savedSuccess = false
 
-        // Проверяем, есть ли уже человек с таким именем
+        // Проверяем, есть ли уже человек с таким именем в people
         try {
           const { data: existing } = await supabase
             .from('people')
@@ -393,7 +435,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
             savedSuccess = !insertErr
           }
         } catch {
-          // fallback в notes
+          // fallback
         }
 
         if (!savedSuccess) {
@@ -407,7 +449,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
           } catch {}
         }
 
-        // Также обязательно сохраняем в «мысль аки» для контекста
+        // Сохраняем/обновляем в «мысль аки» БЕЗ ДУБЛИКАТОВ
         const factDetails = [
           personName,
           age ? `возраст: ${age}` : '',
@@ -419,11 +461,26 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
           .filter(Boolean)
           .join(', ')
 
-        await addAIThought('friends', factDetails)
+        try {
+          const { data: existingMem } = await supabase
+            .from('ai_memory')
+            .select('id')
+            .eq('category', 'friends')
+            .ilike('content', `${personName}%`)
+            .limit(1)
+
+          if (existingMem && existingMem.length > 0) {
+            await supabase.from('ai_memory').update({ content: factDetails }).eq('id', existingMem[0].id)
+          } else {
+            await addAIThought('friends', factDetails)
+          }
+        } catch {
+          await addAIThought('friends', factDetails)
+        }
 
         return {
           tool: 'save_person',
-          details: `Создано досье: ${personName}${age ? `, ${age} лет` : ''}${city ? `, г. ${city}` : ''}`,
+          details: `Обновлено досье: ${personName}${age ? `, ${age} лет` : ''}${city ? `, г. ${city}` : ''}`,
           success: true,
         }
       }

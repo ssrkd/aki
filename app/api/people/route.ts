@@ -89,7 +89,31 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
 
-    return NextResponse.json({ people: peopleList })
+    // Дедупликация и исключение Серика (Серик — владелец, а не друг!)
+    const uniqueMap = new Map<string, any>()
+    for (const p of peopleList) {
+      const lowerName = (p.name || '').toLowerCase().trim()
+      // Пропускаем самого Серика
+      if (['серик', 'серика', 'srk', 'я'].includes(lowerName)) {
+        continue
+      }
+      if (!uniqueMap.has(lowerName)) {
+        uniqueMap.set(lowerName, p)
+      } else {
+        // Если уже есть, объединяем поля (берем более полные)
+        const cur = uniqueMap.get(lowerName)
+        uniqueMap.set(lowerName, {
+          ...cur,
+          age: cur.age || p.age,
+          city: cur.city || p.city,
+          birthday: cur.birthday || p.birthday,
+          notes: cur.notes || p.notes,
+        })
+      }
+    }
+
+    const uniquePeople = Array.from(uniqueMap.values())
+    return NextResponse.json({ people: uniquePeople })
   } catch (err: any) {
     return NextResponse.json({ people: [] })
   }

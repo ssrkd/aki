@@ -12,6 +12,7 @@ export function middleware(request: NextRequest) {
     '/api/cron',
     '/api/people',
     '/api/health',
+    '/api/ai/thoughts',
     '/photo',
   ]
   const isPublic = publicPaths.some((p) => pathname.startsWith(p))

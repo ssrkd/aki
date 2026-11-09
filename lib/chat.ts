@@ -196,7 +196,7 @@ async function requestGroq(apiKey: string, messages: any[]): Promise<string> {
 
   for (const model of models) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 9000)
+    const timeoutId = setTimeout(() => controller.abort(), 12000)
 
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -238,11 +238,11 @@ async function requestGemini(apiKey: string, systemText: string, messages: any[]
       parts: [{ text: m.content }],
     }))
 
-  const models = ['gemini-3.8-flash', 'gemini-1.5-flash']
+  const models = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-latest']
 
   for (const model of models) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 9000)
+    const timeoutId = setTimeout(() => controller.abort(), 12000)
 
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
@@ -281,7 +281,7 @@ async function requestOpenRouter(apiKey: string, messages: any[]): Promise<strin
 
   for (const model of models) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 9000)
+    const timeoutId = setTimeout(() => controller.abort(), 12000)
 
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -508,11 +508,11 @@ ${dbOverview}`
   // 4. Провайдеры (Groq -> Gemini -> OpenRouter) с валидацией ключей
   const providers: { name: string; run: () => Promise<string> }[] = []
 
-  const groq1 = process.env.GROQ_API_KEY_1
+  const groq1 = process.env.GROQ_API_KEY_1 || process.env.GROQ_API_KEY
   const groq2 = process.env.GROQ_API_KEY_2
-  const gemini1 = process.env.GEMINI_API_KEY_1
+  const gemini1 = process.env.GEMINI_API_KEY_1 || process.env.GEMINI_API_KEY
   const gemini2 = process.env.GEMINI_API_KEY_2
-  const openrouter1 = process.env.OPENROUTER_API_KEY_1
+  const openrouter1 = process.env.OPENROUTER_API_KEY_1 || process.env.OPENROUTER_API_KEY
   const openrouter2 = process.env.OPENROUTER_API_KEY_2
 
   if (groq1) providers.push({ name: 'Groq-1', run: () => requestGroq(groq1, fullMessages) })
@@ -521,6 +521,10 @@ ${dbOverview}`
   if (gemini2) providers.push({ name: 'Gemini-2', run: () => requestGemini(gemini2, systemPrompt, fullMessages) })
   if (openrouter1) providers.push({ name: 'OpenRouter-1', run: () => requestOpenRouter(openrouter1, fullMessages) })
   if (openrouter2) providers.push({ name: 'OpenRouter-2', run: () => requestOpenRouter(openrouter2, fullMessages) })
+
+  if (providers.length === 0) {
+    throw new Error('Ключи ИИ не настроены в переменных окружения Vercel (GROQ_API_KEY_1, GEMINI_API_KEY_1 или OPENROUTER_API_KEY_1). Добавьте их в настройках проекта Vercel -> Settings -> Environment Variables.')
+  }
 
   let rawReply = ''
   let usedProvider = 'none'
@@ -536,7 +540,7 @@ ${dbOverview}`
   }
 
   if (!rawReply) {
-    throw new Error('Все провайдеры искусственного интеллекта временно недоступны.')
+    throw new Error('Все провайдеры искусственного интеллекта временно недоступны. Проверьте лимиты ключей API.')
   }
 
   // 5. Железная обработка и полное вырезание действий (JSON actions)

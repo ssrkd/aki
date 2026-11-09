@@ -180,7 +180,64 @@ create table if not exists ai_proactive_log (
   sent_at timestamptz default now()
 );
 
--- Отключаем Row Level Security для простоты (проект персональный, защищён OTP на уровне Next.js middleware)
+-- 12. Таймлайн жизни и автобиография
+create table if not exists life_events (
+  id uuid primary key default gen_random_uuid(),
+  event_date date not null,
+  title text not null,
+  category text check (category in ('childhood', 'school', 'university', 'career', 'relationship', 'turning_point', 'victory', 'family')) default 'turning_point',
+  description text default '',
+  importance integer default 3 check (importance >= 1 and importance <= 5),
+  people_names text default '',
+  created_at timestamptz default now()
+);
+
+-- 13. Письма в будущее (доставляются в Telegram)
+create table if not exists future_letters (
+  id uuid primary key default gen_random_uuid(),
+  delivery_date date not null,
+  content text not null,
+  theme text default 'письмо себе',
+  delivered boolean default false,
+  created_at timestamptz default now()
+);
+
+-- 14. Колесо баланса (оценки 1-10 раз в месяц)
+create table if not exists balance_wheel (
+  id uuid primary key default gen_random_uuid(),
+  month text not null, -- 'YYYY-MM'
+  career integer default 5,
+  health integer default 5,
+  friends integer default 5,
+  family integer default 5,
+  finances integer default 5,
+  development integer default 5,
+  rest integer default 5,
+  discipline integer default 5,
+  notes text default '',
+  created_at timestamptz default now(),
+  unique(month)
+);
+
+-- 15. Персональные настройки и режим общения aki
+create table if not exists user_settings (
+  id uuid primary key default gen_random_uuid(),
+  chat_mode text default 'friend', -- 'friend', 'coach', 'mentor', 'devil', 'listener'
+  feedback_notes text default '',
+  created_at timestamptz default now()
+);
+
+-- 16. Обратная связь по ответам (👍 / 👎)
+create table if not exists ai_feedback (
+  id uuid primary key default gen_random_uuid(),
+  channel text default 'tg',
+  rating text not null check (rating in ('like', 'dislike')),
+  message_content text default '',
+  comment text default '',
+  created_at timestamptz default now()
+);
+
+-- Отключаем Row Level Security для простоты
 alter table otp_codes disable row level security;
 alter table habits disable row level security;
 alter table habit_logs disable row level security;
@@ -196,3 +253,8 @@ alter table people disable row level security;
 alter table interactions disable row level security;
 alter table chat_messages disable row level security;
 alter table ai_proactive_log disable row level security;
+alter table life_events disable row level security;
+alter table future_letters disable row level security;
+alter table balance_wheel disable row level security;
+alter table user_settings disable row level security;
+alter table ai_feedback disable row level security;

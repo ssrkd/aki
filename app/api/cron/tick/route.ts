@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
-import { getAlmatyDateTime, getLiveDatabaseContext } from '@/lib/chat'
+import { getAlmatyDateTime } from '@/lib/chat'
 
 async function sendTelegramNotification(token: string, chatId: number | string, text: string) {
   try {
@@ -62,20 +62,53 @@ async function handleTick(req: NextRequest) {
     const { timeStr, dayOfWeek, dateStr } = getAlmatyDateTime()
     const [hourStr, minStr] = timeStr.split(':')
     const currentHour = parseInt(hourStr, 10)
+    const todayStr = new Date().toISOString().split('T')[0]
 
+    // ==========================================
+    // 0. ПРОВЕРКА И ДОСТАВКА ПИСЕМ В БУДУЩЕЕ
+    // ==========================================
+    try {
+      const { data: pendingLetters } = await supabase
+        .from('future_letters')
+        .select('id, delivery_date, content, theme, created_at')
+        .lte('delivery_date', todayStr)
+        .eq('delivered', false)
+
+      if (pendingLetters && pendingLetters.length > 0) {
+        for (const letter of pendingLetters) {
+          const sentDateStr = letter.created_at ? new Date(letter.created_at).toLocaleDateString('ru-RU') : 'прошлом'
+          const letterText =
+            `✉️ <b>Письмо из прошлого: «${letter.theme || 'послание себе'}»</b>\n\n` +
+            `<i>Серик, ты написал это письмо ${sentDateStr} с доставкой на сегодня:</i>\n\n` +
+            `«${letter.content}»\n\n` +
+            `Как изменились твои мысли с того момента?`
+
+          await sendTelegramNotification(botToken, chatId, letterText)
+          await supabase.from('future_letters').update({ delivered: true }).eq('id', letter.id)
+        }
+      }
+    } catch (e) {
+      console.warn('Ошибка проверки future_letters:', e)
+    }
+
+    // ==========================================
     // 1. ТИХИЕ ЧАСЫ (с 23:00 до 08:30) — не тревожим
+    // ==========================================
     if (currentHour >= 23 || currentHour < 8 || (currentHour === 8 && parseInt(minStr, 10) < 30)) {
       return NextResponse.json({ skipped: true, reason: 'Тихие часы (ночь)', time: timeStr })
     }
 
-    // 2. ПРОВЕРКА ЛИМИТОВ: когда aki писал проактивно в последний раз
+    // ==========================================
+    // 2. ПРОВЕРКА ЛИМИТОВ: когда aki писал в последний раз
+    // ==========================================
     let lastSentTopic = ''
+    let lastInterviewHoursAgo = 999
     try {
       const { data: logs } = await supabase
         .from('ai_proactive_log')
         .select('topic, sent_at')
         .order('sent_at', { ascending: false })
-        .limit(1)
+        .limit(10)
 
       if (logs && logs.length > 0) {
         const lastSentAt = new Date(logs[0].sent_at).getTime()
@@ -90,17 +123,22 @@ async function handleTick(req: NextRequest) {
             lastSentTopic,
           })
         }
+
+        const lastInterviewLog = logs.find((l: any) => l.topic && l.topic.startsWith('interview_'))
+        if (lastInterviewLog) {
+          lastInterviewHoursAgo = (Date.now() - new Date(lastInterviewLog.sent_at).getTime()) / (1000 * 60 * 60)
+        }
       }
     } catch {}
 
+    // ==========================================
     // 3. ПРОВЕРКА ПОВОДОВ
-    // Загружаем данные базы
-    const todayStr = new Date().toISOString().split('T')[0]
-    const [habitsRes, habitLogsRes, goalsRes, peopleRes] = await Promise.all([
+    // ==========================================
+    const [habitsRes, habitLogsRes, peopleRes, memoriesRes] = await Promise.all([
       supabase.from('habits').select('id, name, streak'),
       supabase.from('habit_logs').select('habit_id').eq('logged_date', todayStr),
-      supabase.from('goals').select('id, title, progress').eq('status', 'active'),
       supabase.from('people').select('name, birthday, relation'),
+      supabase.from('ai_memory').select('category, content'),
     ])
 
     const completedHabitIds = new Set((habitLogsRes.data || []).map((l: any) => l.habit_id))
@@ -117,7 +155,7 @@ async function handleTick(req: NextRequest) {
       messageToSend = `🎉 <b>Серик, важное напоминание!</b>\n\nСегодня день рождения у <b>${bdayPerson.name}</b> (${bdayPerson.relation || 'друг'})!\nНе забудь тепло поздравить.`
     }
 
-    // ПОВОД 2: Утренний фокус (с 09:00 до 11:30)
+    // ПОВОД 2: Утренний фокус (с 09:00 до 12:00)
     if (!messageToSend && currentHour >= 9 && currentHour < 12 && lastSentTopic !== 'morning') {
       topic = 'morning'
       const habitsList = pendingHabits.slice(0, 3).map((h: any) => `• ${h.name}`).join('\n')
@@ -129,7 +167,49 @@ async function handleTick(req: NextRequest) {
           : `Все основные привычки готовы или трекер ждет твоего дня. Чем займемся?`)
     }
 
-    // ПОВОД 3: Вечерний разбор (с 20:30 до 22:30)
+    // ПОВОД 3: ИНТЕРВЬЮ-РЕЖИМ (раз в 2 дня, в дневное время 14:00 - 18:30)
+    if (!messageToSend && currentHour >= 14 && currentHour < 19 && lastInterviewHoursAgo >= 40) {
+      const allMemoriesText = (memoriesRes.data || []).map((m: any) => m.content.toLowerCase()).join(' ')
+
+      const interviewPool: { key: string; question: string }[] = [
+        {
+          key: 'childhood',
+          question: `Серик, размышлял тут о нас: я ведь почти ничего не знаю про твоё детство. Каким ты был маленьким? Какое самое яркое или тёплое воспоминание осталось из школы или двора?`,
+        },
+        {
+          key: 'family',
+          question: `Серик, хочу лучше понимать тебя и твои корни: расскажи немного о своей семье. Кто из близких оказал на твой характер самое сильное влияние?`,
+        },
+        {
+          key: 'fears',
+          question: `Серик, глубокий вопрос на подумать: чего ты больше всего опасаешься или боишься не успеть в жизни? О чём больше всего переживаешь?`,
+        },
+        {
+          key: 'vision5y',
+          question: `Серик, если заглянуть вперед на 5 лет, когда все твои амбиции реализовались на 100% — как выглядит твой идеальный обычный рабочий день? Чем ты занят?`,
+        },
+        {
+          key: 'recharge',
+          question: `Серик, а что для тебя служит лучшей перезагрузкой, когда накапливается усталость от задач и проектов? Что возвращает тебе чистый фокус?`,
+        },
+        {
+          key: 'principles_deep',
+          question: `Серик, какое качество в людях ты ценишь превыше всего, а за какую вещь готов вычеркнуть человека из своей жизни навсегда?`,
+        },
+      ]
+
+      // Ищем тему, о которой меньше всего знаем
+      const chosen =
+        interviewPool.find((item) => !allMemoriesText.includes(item.key.replace('_deep', ''))) ||
+        interviewPool[Math.floor(Math.random() * interviewPool.length)]
+
+      if (chosen && lastSentTopic !== `interview_${chosen.key}`) {
+        topic = `interview_${chosen.key}`
+        messageToSend = `💭 <b>Вопрос от aki:</b>\n\n${chosen.question}`
+      }
+    }
+
+    // ПОВОД 4: Вечерний разбор (с 20:30 до 22:30)
     if (!messageToSend && currentHour >= 20 && currentHour < 23 && lastSentTopic !== 'evening') {
       topic = 'evening'
       const doneCount = (habitLogsRes.data || []).length
@@ -175,4 +255,3 @@ async function handleTick(req: NextRequest) {
     return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
   }
 }
-

@@ -12,12 +12,16 @@ import {
   FileText,
   Sparkles,
   Users,
+  Flag,
+  Compass,
 } from 'lucide-react'
 
 const navItems = [
   { href: '/habits', label: 'Привычки', icon: CheckSquare },
   { href: '/goals', label: 'Цели', icon: Target },
   { href: '/people', label: 'Окружение', icon: Users },
+  { href: '/timeline', label: 'История', icon: Flag },
+  { href: '/balance', label: 'Баланс', icon: Compass },
   { href: '/finances', label: 'Финансы', icon: DollarSign },
   { href: '/books', label: 'Книги', icon: BookOpen },
   { href: '/plans', label: 'Планы', icon: ClipboardList },

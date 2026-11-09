@@ -531,6 +531,73 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
         }
       }
 
+      case 'create_life_event': {
+        const { title, event_date, category = 'turning_point', description = '', importance = 3, people_names = '' } = args
+        try {
+          await supabase.from('life_events').insert({
+            title,
+            event_date: event_date || new Date().toISOString().split('T')[0],
+            category,
+            description,
+            importance: Number(importance) || 3,
+            people_names,
+          })
+        } catch {}
+
+        await addAIThought('self', `Событие жизни (${event_date || 'дата'}): ${title}. ${description}`)
+
+        return {
+          tool: 'create_life_event',
+          details: `Добавлено в историю жизни: "${title}" (${event_date || 'сегодня'})`,
+          success: true,
+        }
+      }
+
+      case 'send_future_letter': {
+        const { content, delivery_date, theme = 'письмо себе' } = args
+        try {
+          await supabase.from('future_letters').insert({
+            content,
+            delivery_date,
+            theme,
+            delivered: false,
+          })
+        } catch {}
+
+        return {
+          tool: 'send_future_letter',
+          details: `Письмо в будущее сохранено. Доставка в Telegram: ${delivery_date}`,
+          success: true,
+        }
+      }
+
+      case 'set_chat_mode': {
+        const { mode } = args
+        const validModes = ['friend', 'coach', 'mentor', 'devil', 'listener']
+        const targetMode = validModes.includes(mode) ? mode : 'friend'
+
+        try {
+          await supabase.from('user_settings').upsert(
+            { id: '00000000-0000-0000-0000-000000000001', chat_mode: targetMode },
+            { onConflict: 'id' }
+          )
+        } catch {}
+
+        const modeNames: Record<string, string> = {
+          friend: 'Близкий друг',
+          coach: 'Коуч',
+          mentor: 'Строгий наставник',
+          devil: 'Адвокат дьявола (критик)',
+          listener: 'Тихий слушатель',
+        }
+
+        return {
+          tool: 'set_chat_mode',
+          details: `Режим общения переключен на: ${modeNames[targetMode]}`,
+          success: true,
+        }
+      }
+
       default:
         return { tool: name, details: 'Команда выполнена', success: true }
     }

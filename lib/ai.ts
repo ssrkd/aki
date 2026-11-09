@@ -103,7 +103,21 @@ export async function addAIThought(
   // 2. Вставляем уникальную запись
   try {
     const { error } = await supabase.from('ai_memory').insert({ category, content: cleanContent })
-    if (!error) return true
+    if (!error) {
+      if (category === 'principles') {
+        try {
+          const { data: existingP } = await supabase
+            .from('principles')
+            .select('id')
+            .ilike('text', cleanContent)
+            .limit(1)
+          if (!existingP || existingP.length === 0) {
+            await supabase.from('principles').insert({ text: cleanContent })
+          }
+        } catch {}
+      }
+      return true
+    }
   } catch {}
 
   try {
@@ -421,7 +435,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
             if (gifts) updatePayload.gifts = gifts
             if (debts_promises) updatePayload.debts_promises = debts_promises
             if (notes) updatePayload.notes = notes
-            updatePayload.last_contact_date = new Date().toISOString().split('T')[0]
+            if (args.last_contact_date) updatePayload.last_contact_date = args.last_contact_date
 
             const { error: updateErr } = await supabase
               .from('people')
@@ -446,7 +460,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
               debts_promises,
               avatar_url: avatarUrl,
               notes,
-              last_contact_date: new Date().toISOString().split('T')[0],
+              last_contact_date: args.last_contact_date || null,
             })
             savedSuccess = !insertErr
           }
@@ -527,6 +541,33 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
         return {
           tool: 'record_interaction',
           details: `Зафиксирован контакт с ${person_name}: ${summary}`,
+          success: true,
+        }
+      }
+
+      case 'add_principle': {
+        const text = (args.text || args.content || '').trim()
+        if (!text) {
+          return { tool: 'add_principle', details: 'Текст принципа не указан', success: false }
+        }
+
+        try {
+          const { data: existing } = await supabase
+            .from('principles')
+            .select('id')
+            .ilike('text', text)
+            .limit(1)
+
+          if (!existing || existing.length === 0) {
+            await supabase.from('principles').insert({ text })
+          }
+        } catch {}
+
+        await addAIThought('principles', text)
+
+        return {
+          tool: 'add_principle',
+          details: `Принцип зафиксирован в привычках и памяти: "${text}"`,
           success: true,
         }
       }

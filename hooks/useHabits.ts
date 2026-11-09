@@ -96,7 +96,13 @@ export function useHabits() {
       .order('created_at', { ascending: true })
 
     if (!error && data) {
-      const clean = data.filter((p) => !p.text.startsWith('tg_chat:') && !p.text.startsWith('ai_mem:'))
+      const clean = data
+        .filter((p) => !p.text.startsWith('tg_chat:') && !p.text.startsWith('ai_mem:'))
+        .map((p) => ({
+          ...p,
+          text: p.text.replace(/^ai_thought:[^:]*:/, '').trim(),
+        }))
+        .filter((p) => p.text.length > 0)
       cachedPrinciples = clean
       setPrinciples(clean)
     }

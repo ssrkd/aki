@@ -25,7 +25,6 @@ const navItems = [
   { href: '/finances', label: 'Финансы', icon: DollarSign },
   { href: '/books', label: 'Книги', icon: BookOpen },
   { href: '/plans', label: 'Планы', icon: ClipboardList },
-  { href: '/achievements', label: 'Достижения', icon: Trophy },
   { href: '/notebook', label: 'Блокнот', icon: FileText },
 ]
 

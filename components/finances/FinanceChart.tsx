@@ -15,7 +15,7 @@ export default function FinanceChart({ data }: FinanceChartProps) {
         <XAxis dataKey="month" tick={{ fontSize: 12, fill: '#6B7280' }} />
         <YAxis tick={{ fontSize: 12, fill: '#6B7280' }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}к`} />
         <Tooltip
-          formatter={(value: number) => [`${value.toLocaleString('ru-RU')} ₽`]}
+          formatter={(value: number) => [`${value.toLocaleString('ru-RU')} ₸`]}
           contentStyle={{ borderRadius: 8, border: '1px solid #E5E7EB', fontSize: 12 }}
         />
         <Legend wrapperStyle={{ fontSize: 12 }} />

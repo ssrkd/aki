@@ -79,7 +79,7 @@ export default function AddTransactionModal({ isOpen, onClose, onAdd }: AddTrans
         </div>
 
         <Input
-          label="Сумма (₽)"
+          label="Сумма (₸)"
           type="number"
           placeholder="0"
           value={amount}

@@ -294,16 +294,24 @@ export default function AkiAssistantDrawer() {
     await fetch(`/api/ai/thoughts?id=${id}`, { method: 'DELETE' })
   }
 
-  const handleClearHistory = () => {
+  const handleNewChat = async () => {
     const init: Message[] = [
       {
-        id: 'welcome',
+        id: 'welcome-' + Date.now(),
         role: 'assistant',
-        content: 'История очищена. Чем могу помочь?',
+        content: 'Привет, Серик! Открыт новый чистый диалог. О чём поговорим или что запланируем?',
       },
     ]
     setMessages(init)
     localStorage.removeItem('aki_chat_messages')
+    try {
+      await fetch('/api/ai/chat', { method: 'DELETE' })
+    } catch {}
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  const handleClearHistory = () => {
+    handleNewChat()
   }
 
   const filteredThoughts =
@@ -387,12 +395,23 @@ export default function AkiAssistantDrawer() {
               </button>
             </div>
 
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
-            >
-              <X size={15} />
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                onClick={handleNewChat}
+                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/80 shadow-2xs transition-all"
+                title="Начать новый диалог"
+              >
+                <Plus size={11} />
+                <span>Новый чат</span>
+              </button>
+
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
+              >
+                <X size={15} />
+              </button>
+            </div>
           </div>
 
           {/* ВКЛАДКА 1: ЧАТ */}

@@ -22,6 +22,22 @@ export async function GET(req: NextRequest) {
   }
 }
 
+export async function DELETE(req: NextRequest) {
+  try {
+    const sessionCookie = req.cookies.get('aki_session')?.value
+    if (!sessionCookie) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    const supabase = createServiceClient()
+    await supabase.from('chat_messages').delete().eq('channel', 'web')
+
+    return NextResponse.json({ success: true })
+  } catch (err: any) {
+    return NextResponse.json({ error: err?.message || 'Server error' }, { status: 500 })
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     // 1. Проверка авторизации: сессионная кука или Bearer токен

@@ -37,21 +37,21 @@ export default function FinancesPage() {
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
           <p className="text-[11px] text-slate-400 font-medium mb-1">Доходы за месяц</p>
-          <p className="text-xl font-bold text-slate-900">+{summary.income.toLocaleString('ru-RU')} ₽</p>
+          <p className="text-xl font-bold text-slate-900">+{summary.income.toLocaleString('ru-RU')} ₸</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
           <p className="text-[11px] text-slate-400 font-medium mb-1">Расходы за месяц</p>
-          <p className="text-xl font-bold text-slate-900">-{summary.expense.toLocaleString('ru-RU')} ₽</p>
+          <p className="text-xl font-bold text-slate-900">-{summary.expense.toLocaleString('ru-RU')} ₸</p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
           <p className="text-[11px] text-slate-400 font-medium mb-1">Баланс месяца</p>
           <p className={`text-xl font-bold ${summary.balance >= 0 ? 'text-slate-900' : 'text-rose-600'}`}>
-            {summary.balance > 0 ? '+' : ''}{summary.balance.toLocaleString('ru-RU')} ₽
+            {summary.balance > 0 ? '+' : ''}{summary.balance.toLocaleString('ru-RU')} ₸
           </p>
         </div>
         <div className="bg-white rounded-xl p-4 border border-slate-100 shadow-card">
           <p className="text-[11px] text-slate-400 font-medium mb-1">Накопления</p>
-          <p className="text-xl font-bold text-slate-900">{summary.savings.toLocaleString('ru-RU')} ₽</p>
+          <p className="text-xl font-bold text-slate-900">{summary.savings.toLocaleString('ru-RU')} ₸</p>
         </div>
       </div>
 

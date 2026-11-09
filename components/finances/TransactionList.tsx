@@ -66,7 +66,7 @@ export default function TransactionList({ transactions, onDelete }: TransactionL
             }`}
           >
             {t.type === 'income' ? '+' : t.type === 'savings' ? '→' : '-'}
-            {Number(t.amount).toLocaleString('ru-RU')} ₽
+            {Number(t.amount).toLocaleString('ru-RU')} ₸
           </span>
 
           {/* Удалить */}

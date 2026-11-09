@@ -453,6 +453,20 @@ ${activeModePrompt}
 - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО протоколировать разговор ("Серик спросил...", "Серик хочет поговорить о...")!
 - Если речь идёт о друге/человеке — используй инструмент save_person (он автоматически обновит досье без дубликатов).
 
+ФОРМУЛИРОВАНИЕ ПРИНЦИПОВ И МЫСЛЕЙ (КРИТИЧЕСКИ ВАЖНО!):
+- Если Серик делится своим жизненным правилом, установкой или принципом (например: «если я злой, то я не отвечаю никому, даже без настроения, потому что могу сказать «давай не будем общаться из-за эмоций» и потерять людей»):
+  1. НИКОГДА не склеивай слова и не записывай сырой поток речи (никаких «Принципесли...»)!
+  2. СФОРМУЛИРУЙ принцип ёмко, красиво, литературно и зрело своими словами:
+     Например: «В состоянии гнева или подавленности брать паузу и не отвечать людям, чтобы не разрушать отношения на эмоциях»
+  3. ОБЯЗАТЕЛЬНО вызови инструмент add_principle с этой чистой формулировкой:
+     { "tool": "add_principle", "args": { "text": "В состоянии гнева или подавленности брать паузу и не отвечать людям, чтобы не разрушать отношения на эмоциях" } }
+  4. Это сразу же появится в разделе /habits в блоке «Личные принципы» и в памяти аки!
+
+РАСКЛАДЫВАНИЕ ЗАМЕТОК В БЛОКНОТ (/notebook):
+- В блокноте Серика есть 6 разделов: 'self' (Про себя), 'friends' (Друзья), 'family' (Семья), 'work' (Работа), 'ideas' (Идеи), 'other' (Разное).
+- Если Серик делится размышлениями о жизни, семье, друзьях, работе или идеях — используй add_note с точной категорией:
+  { "tool": "add_note", "args": { "title": "Заголовок заметки", "category": "self"|"friends"|"family"|"work"|"ideas"|"other", "content": "Подробный текст" } }
+
 ДОБАВЛЕНИЕ ПРИВЫЧЕК И ЕЖЕДНЕВНЫХ ЗАДАНИЙ (ОЧЕНЬ ВАЖНО!):
 - Если Серик упоминает свои привычки, ежедневные действия, утренние/вечерние ритуалы (например: "я каждый день встаю в 7 утра", "читаю по 20 страниц в день", "не пить газировку", "каждый день тренируюсь"):
   ТЫ ОБЯЗАН СРАЗУ ВЫЗВАТЬ create_habit!
@@ -468,13 +482,14 @@ ${activeModePrompt}
   "actions": [
     { "tool": "save_person", "args": { "name": "Имя", "age": 18, "city": "Город", "relation": "friend"|"family"|"colleague", "birthday": "YYYY-MM-DD", "occupation": "...", "notes": "..." } },
     { "tool": "record_interaction", "args": { "person_name": "Имя", "summary": "О чём говорили / где виделись" } },
+    { "tool": "add_principle", "args": { "text": "Чётко сформулированный жизненный принцип Серика" } },
     { "tool": "create_goal", "args": { "title": "...", "horizon": "1year"|"5years"|"10years" } },
     { "tool": "update_goal_progress", "args": { "goal_id": "<РЕАЛЬНЫЙ_ID>", "progress": 50 } },
     { "tool": "create_habit", "args": { "name": "...", "type": "positive"|"negative" } },
-    { "tool": "toggle_habit_today", "args": { "habit_id": "<РЕАЛЬНЫЙ_ID>", "completed": true } },
+    { "tool": "toggle_habit_today", "args": { "habit_id": "<РЕАЛЬНЫID>", "completed": true } },
     { "tool": "add_transaction", "args": { "type": "income"|"expense", "amount": 1000, "category": "Еда", "description": "Обед" } },
     { "tool": "create_plan", "args": { "title": "...", "tasks": ["Задача 1"] } },
-    { "tool": "add_note", "args": { "title": "...", "category": "ideas", "content": "..." } },
+    { "tool": "add_note", "args": { "title": "...", "category": "self"|"friends"|"family"|"work"|"ideas"|"other", "content": "..." } },
     { "tool": "add_book", "args": { "title": "...", "author": "...", "status": "want" } },
     { "tool": "add_thought", "args": { "content": "Фактическое наблюдение о Серике", "category": "self"|"friends"|"work"|"principles" } },
     { "tool": "create_life_event", "args": { "title": "Поступление в вуз / победа на олимпиаде", "event_date": "YYYY-MM-DD", "category": "childhood"|"school"|"university"|"career"|"turning_point"|"victory"|"family", "description": "...", "importance": 5 } },

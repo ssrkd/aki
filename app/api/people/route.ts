@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
               age: age || 18,
               city: city || 'Кызылорда',
               avatar_url: `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(name)}`,
-              last_contact_date: new Date().toISOString().split('T')[0],
+              last_contact_date: null,
               notes: content,
               created_at: m.created_at,
             })
@@ -79,7 +79,7 @@ export async function GET(req: NextRequest) {
                 name,
                 relation: 'friend',
                 avatar_url: `https://api.dicebear.com/7.x/notionists/svg?seed=${encodeURIComponent(name)}`,
-                last_contact_date: new Date().toISOString().split('T')[0],
+                last_contact_date: null,
                 notes: n.content,
                 created_at: n.created_at,
               })

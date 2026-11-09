@@ -128,15 +128,12 @@ export default function LoginPage() {
           
           {/* Верхняя шапка с логотипом */}
           <div className="flex flex-col items-center text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-[#3B4FDE] flex items-center justify-center text-white shadow-lg shadow-indigo-500/25 mb-4 transform hover:scale-105 transition-transform">
-              <Sparkles size={28} className="text-white" />
+            <div className="w-14 h-14 rounded-2xl overflow-hidden shadow-lg shadow-indigo-500/15 mb-4 transform hover:scale-105 transition-transform border border-slate-200">
+              <img src="/photo/aki.webp" alt="aki" className="w-full h-full object-cover" />
             </div>
             
             <div className="flex items-center gap-2">
-              <h1 className="text-3xl font-extrabold text-[#111827] tracking-tight">aki</h1>
-              <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-indigo-50 text-[#3B4FDE] border border-indigo-100">
-                личный трекер
-              </span>
+              <h1 className="text-3xl font-extrabold text-[#111827] tracking-tight">aki AI</h1>
             </div>
             <p className="text-sm text-[#6B7280] mt-1.5">
               Безопасный вход через Telegram
@@ -149,7 +146,7 @@ export default function LoginPage() {
               <CheckCircle2 size={18} className="text-emerald-600 flex-shrink-0" />
               <div>
                 <p className="font-semibold text-emerald-900">Код отправлен в Telegram!</p>
-                <p className="text-emerald-700/90 text-[11px] mt-0.5">Проверьте сообщения от бота <b>@srkandaki_bot</b></p>
+                <p className="text-emerald-700/90 text-[11px] mt-0.5">Проверьте сообщения от бота</p>
               </div>
             </div>
           ) : (
@@ -224,18 +221,8 @@ export default function LoginPage() {
             )}
           </button>
 
-          {/* Кнопки действий: Открыть бота / Повторить отправку */}
-          <div className="space-y-2 pt-2 border-t border-slate-100">
-            <a
-              href="https://t.me/srkandaki_bot?start=login"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="w-full py-2.5 px-3 rounded-xl border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50/40 text-slate-700 hover:text-[#3B4FDE] text-xs font-medium flex items-center justify-center gap-1.5 transition-colors"
-            >
-              <ExternalLink size={14} />
-              <span>Открыть бота @srkandaki_bot в Telegram</span>
-            </a>
-
+          {/* Кнопка повторной отправки */}
+          <div className="pt-2 border-t border-slate-100">
             <button
               onClick={() => handleRequestCode(false)}
               disabled={isRequesting || countdown > 0}

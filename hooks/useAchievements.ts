@@ -37,17 +37,9 @@ export function useAchievements() {
 
     const handleSync = () => fetchAchievements(true)
     window.addEventListener('aki-db-changed', handleSync)
-    window.addEventListener('focus', handleSync)
-
-    const channel = supabase
-      .channel('achievements-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'achievements' }, handleSync)
-      .subscribe()
 
     return () => {
       window.removeEventListener('aki-db-changed', handleSync)
-      window.removeEventListener('focus', handleSync)
-      supabase.removeChannel(channel)
     }
   }, [fetchAchievements])
 

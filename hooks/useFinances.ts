@@ -37,17 +37,9 @@ export function useFinances() {
 
     const handleSync = () => fetchTransactions(true)
     window.addEventListener('aki-db-changed', handleSync)
-    window.addEventListener('focus', handleSync)
-
-    const channel = supabase
-      .channel('finances-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, handleSync)
-      .subscribe()
 
     return () => {
       window.removeEventListener('aki-db-changed', handleSync)
-      window.removeEventListener('focus', handleSync)
-      supabase.removeChannel(channel)
     }
   }, [fetchTransactions])
 

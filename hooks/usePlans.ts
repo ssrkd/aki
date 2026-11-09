@@ -47,18 +47,9 @@ export function usePlans() {
 
     const handleSync = () => fetchPlans(true)
     window.addEventListener('aki-db-changed', handleSync)
-    window.addEventListener('focus', handleSync)
-
-    const channel = supabase
-      .channel('plans-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'plans' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'plan_tasks' }, handleSync)
-      .subscribe()
 
     return () => {
       window.removeEventListener('aki-db-changed', handleSync)
-      window.removeEventListener('focus', handleSync)
-      supabase.removeChannel(channel)
     }
   }, [fetchPlans])
 

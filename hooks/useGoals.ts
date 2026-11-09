@@ -39,19 +39,9 @@ export function useGoals() {
     // Слушатель событий от aki AI
     const handleDbChange = () => fetchGoals(true)
     window.addEventListener('aki-db-changed', handleDbChange)
-    window.addEventListener('focus', () => fetchGoals(true))
-
-    // Realtime подписка Supabase
-    const channel = supabase
-      .channel('goals-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'goals' }, () => {
-        fetchGoals(true)
-      })
-      .subscribe()
 
     return () => {
       window.removeEventListener('aki-db-changed', handleDbChange)
-      supabase.removeChannel(channel)
     }
   }, [fetchGoals])
 

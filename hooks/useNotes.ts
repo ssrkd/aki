@@ -48,17 +48,9 @@ export function useNotes() {
 
     const handleSync = () => fetchNotes(true)
     window.addEventListener('aki-db-changed', handleSync)
-    window.addEventListener('focus', handleSync)
-
-    const channel = supabase
-      .channel('notes-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes' }, handleSync)
-      .subscribe()
 
     return () => {
       window.removeEventListener('aki-db-changed', handleSync)
-      window.removeEventListener('focus', handleSync)
-      supabase.removeChannel(channel)
     }
   }, [fetchNotes])
 

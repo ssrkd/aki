@@ -112,19 +112,9 @@ export function useHabits() {
     }
 
     window.addEventListener('aki-db-changed', handleSync)
-    window.addEventListener('focus', handleSync)
-
-    const channel = supabase
-      .channel('habits-realtime')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'habits' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_logs' }, handleSync)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'principles' }, handleSync)
-      .subscribe()
 
     return () => {
       window.removeEventListener('aki-db-changed', handleSync)
-      window.removeEventListener('focus', handleSync)
-      supabase.removeChannel(channel)
     }
   }, [fetchHabits, fetchPrinciples])
 

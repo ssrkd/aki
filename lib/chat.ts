@@ -208,7 +208,7 @@ async function requestGroq(apiKey: string, messages: any[]): Promise<string> {
         body: JSON.stringify({
           model,
           messages,
-          max_tokens: 2048,
+          max_tokens: 1024,
           temperature: 0.6,
         }),
         signal: controller.signal,
@@ -238,7 +238,7 @@ async function requestGemini(apiKey: string, systemText: string, messages: any[]
       parts: [{ text: m.content }],
     }))
 
-  const models = ['gemini-2.0-flash-001', 'gemini-1.5-flash']
+  const models = ['gemini-3.8-flash', 'gemini-1.5-flash']
 
   for (const model of models) {
     const controller = new AbortController()
@@ -293,7 +293,7 @@ async function requestOpenRouter(apiKey: string, messages: any[]): Promise<strin
         body: JSON.stringify({
           model,
           messages,
-          max_tokens: 2048,
+          max_tokens: 1024,
           temperature: 0.6,
         }),
         signal: controller.signal,

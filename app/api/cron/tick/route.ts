@@ -54,20 +54,9 @@ async function handleTick(req: NextRequest) {
 
     const supabase = createServiceClient()
 
-    // Находим chat_id Серика из telegram_users
-    const { data: users } = await supabase
-      .from('telegram_users')
-      .select('chat_id, first_name')
-      .order('last_interaction', { ascending: false })
-      .limit(1)
-
-    const targetUser = users?.[0]
-    if (!targetUser || !targetUser.chat_id) {
-      return NextResponse.json({ message: 'Нет пользователей Telegram для отправки' })
-    }
-
-    const chatId = targetUser.chat_id
-    const userName = targetUser.first_name || 'Серик'
+    // Получатель — СТРОГО Серик (chat_id: 996317285)
+    const chatId = 996317285
+    const userName = 'Серик'
 
     // Время в Алматы
     const { timeStr, dayOfWeek, dateStr } = getAlmatyDateTime()

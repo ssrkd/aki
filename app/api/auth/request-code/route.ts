@@ -21,31 +21,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Database error' }, { status: 500 })
     }
 
-    // 2. Ищем chat_id получателей
-    const chatIds: (string | number)[] = []
-
-    if (process.env.TELEGRAM_CHAT_ID) {
-      chatIds.push(process.env.TELEGRAM_CHAT_ID)
-    }
-
-    // Проверяем telegram_users
-    try {
-      const { data: users } = await supabase
-        .from('telegram_users')
-        .select('chat_id')
-        .order('last_interaction', { ascending: false })
-        .limit(10)
-
-      if (users && users.length > 0) {
-        for (const u of users) {
-          if (!chatIds.includes(u.chat_id)) {
-            chatIds.push(u.chat_id)
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('telegram_users не найден или ошибка запроса:', e)
-    }
+    // 2. Получатель кода — СТРОГО Серик (chat_id: 996317285)
+    const chatIds: (string | number)[] = [996317285]
 
     // Проверяем principles (tg_chat:...) как резервный канал
     try {

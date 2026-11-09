@@ -95,38 +95,9 @@ export async function POST(req: NextRequest) {
 
     const supabase = createServiceClient()
 
-    // 1. Команда /myid или /id — чтобы Серик мог быстро узнать свой Telegram Chat ID
-    if (text === '/myid' || text === '/id') {
-      await sendTelegramMessage(
-        botToken,
-        chatId,
-        `🆔 <b>Твой Telegram ID:</b> <code>${chatId}</code>\n\nМожешь скопировать его в настройки или отправить мне.`
-      )
-      return NextResponse.json({ ok: true })
-    }
-
-    // 2. Определение владельца (Серика)
-    // Проверяем: либо совпадает с переменной TELEGRAM_OWNER_ID, либо это первый/единственный зарегистрированный пользователь
-    const configuredOwnerId = process.env.TELEGRAM_OWNER_ID || process.env.TELEGRAM_CHAT_ID
-
-    let isOwner = false
-    if (configuredOwnerId) {
-      isOwner = String(chatId) === String(configuredOwnerId)
-    } else {
-      // Если переменная не задана, проверяем первого пользователя в telegram_users
-      const { data: owners } = await supabase
-        .from('telegram_users')
-        .select('chat_id')
-        .order('created_at', { ascending: true })
-        .limit(1)
-
-      if (owners && owners.length > 0) {
-        isOwner = String(chatId) === String(owners[0].chat_id)
-      } else {
-        // Если база пустая — первый написавший автоматически становится владельцем!
-        isOwner = true
-      }
-    }
+    // ВЛАДЕЛЕЦ БОТА — СТРОГО СЕРИК (ID: 996317285)
+    const OWNER_ID = 996317285
+    const isOwner = Number(chatId) === OWNER_ID || String(chatId) === '996317285'
 
     // Сохраняем пользователя в telegram_users
     try {
@@ -141,12 +112,12 @@ export async function POST(req: NextRequest) {
       )
     } catch {}
 
-    // 3. ЕСЛИ ЭТО НЕ СЕРИК — вежливо отказываем
+    // ЕСЛИ ЭТО НЕ СЕРИК — вежливо отказываем и блокируем доступ
     if (!isOwner) {
       await sendTelegramMessage(
         botToken,
         chatId,
-        'Здравствуйте! Я — персональный ассистент Серика. Доступ к системе и общению открыт только для владельца. Желаю вам хорошего дня!'
+        'Здравствуйте! Я — персональный личный ассистент Серика. Доступ к системе открыт исключительно для владельца. Всего доброго!'
       )
       return NextResponse.json({ ok: true })
     }

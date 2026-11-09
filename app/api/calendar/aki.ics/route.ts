@@ -72,8 +72,14 @@ export async function GET(req: NextRequest) {
       } catch {}
     }
 
+    // 2. Дни рождения людей из карточек (с гарантированной дедупликацией)
+    const addedBdayNames = new Set<string>()
+
     for (const person of peopleList) {
-      if (!person.birthday) continue
+      if (!person.birthday || !person.name) continue
+      const lowerName = person.name.toLowerCase().trim()
+      if (addedBdayNames.has(lowerName)) continue
+      addedBdayNames.add(lowerName)
       // birthday может быть 'YYYY-MM-DD' или 'MM-DD'
       const parts = person.birthday.split('-')
       const mm = parts.length === 3 ? parts[1] : parts[0]

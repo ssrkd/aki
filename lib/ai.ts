@@ -77,21 +77,37 @@ export async function getAIThoughts(): Promise<AIThought[]> {
   return thoughts
 }
 
-// Добавление мысли аки
+// Добавление мысли аки (с гарантированной защитой от дубликатов)
 export async function addAIThought(
   category: 'self' | 'friends' | 'work' | 'principles',
   content: string
 ): Promise<boolean> {
+  const cleanContent = content.trim()
+  if (!cleanContent) return false
+
   const supabase = createServiceClient()
+
+  // 1. Проверяем, нет ли уже точно такой же мысли или принципа
   try {
-    const { error } = await supabase.from('ai_memory').insert({ category, content })
+    const { data: existing } = await supabase
+      .from('ai_memory')
+      .select('id')
+      .ilike('content', cleanContent)
+      .limit(1)
+
+    if (existing && existing.length > 0) {
+      return true // Дубликат отсеян!
+    }
+  } catch {}
+
+  // 2. Вставляем уникальную запись
+  try {
+    const { error } = await supabase.from('ai_memory').insert({ category, content: cleanContent })
     if (!error) return true
-  } catch {
-    // fallback
-  }
+  } catch {}
 
   try {
-    await supabase.from('principles').insert({ text: `ai_thought:${category}:${content}` })
+    await supabase.from('principles').insert({ text: `ai_thought:${category}:${cleanContent}` })
     return true
   } catch (e) {
     console.error('Ошибка сохранения мысли аки:', e)

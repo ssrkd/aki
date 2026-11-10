@@ -489,7 +489,7 @@ export default function AkiAssistantDrawer() {
                     onClick={() => setShowSessionsList(!showSessionsList)}
                     className={`p-1.5 rounded-lg text-[11px] font-medium transition-colors ${
                       showSessionsList
-                        ? 'bg-slate-900 text-white'
+                        ? 'bg-slate-200 text-slate-900 font-semibold shadow-2xs'
                         : 'text-slate-600 hover:bg-slate-200/60'
                     }`}
                     title="Все диалоги"
@@ -518,7 +518,7 @@ export default function AkiAssistantDrawer() {
 
           {/* ВЫПАДАЮЩАЯ ПАНЕЛЬ СПИСКА ДИАЛОГОВ */}
           {activeTab === 'chat' && showSessionsList && (
-            <div className="p-3 bg-slate-50 border-b border-slate-200 max-h-[220px] overflow-y-auto space-y-1.5 animate-in slide-in-from-top-2 duration-150 shadow-inner">
+            <div className="p-3 bg-slate-50/80 border-b border-slate-200 max-h-[220px] overflow-y-auto space-y-1.5 animate-in slide-in-from-top-2 duration-150">
               <div className="flex items-center justify-between pb-1 text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
                 <span>Твои диалоги ({sessions.length})</span>
                 <button
@@ -535,23 +535,23 @@ export default function AkiAssistantDrawer() {
                   <div
                     key={sess.id}
                     onClick={() => handleSwitchSession(sess.id)}
-                    className={`p-2 rounded-xl text-xs flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                    className={`p-2.5 rounded-xl text-xs flex items-center justify-between gap-2 cursor-pointer transition-all ${
                       isActive
-                        ? 'bg-slate-900 text-white shadow-xs font-semibold'
-                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/60'
+                        ? 'bg-white text-slate-900 border-2 border-slate-800 shadow-xs font-semibold'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/80'
                     }`}
                   >
                     <div className="flex items-center gap-2 min-w-0">
-                      <MessageSquare size={13} className={isActive ? 'text-white' : 'text-slate-400'} />
+                      <MessageSquare size={13} className={isActive ? 'text-slate-900' : 'text-slate-400'} />
                       <span className="truncate text-xs">{sess.title}</span>
                     </div>
 
                     <div className="flex items-center gap-1 flex-shrink-0">
-                      {isActive && <Check size={12} className="text-emerald-400 mr-1" />}
+                      {isActive && <Check size={12} className="text-emerald-600 mr-1" />}
                       <button
                         onClick={(e) => handleDeleteSession(sess.id, e)}
-                        className={`p-1 rounded hover:opacity-100 transition-opacity ${
-                          isActive ? 'text-white/70 hover:text-red-300' : 'text-slate-400 hover:text-red-500'
+                        className={`p-1 rounded transition-colors ${
+                          isActive ? 'text-slate-400 hover:text-red-500' : 'text-slate-400 hover:text-red-500'
                         }`}
                         title="Удалить диалог"
                       >

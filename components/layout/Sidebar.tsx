@@ -3,29 +3,13 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  CheckSquare,
-  Target,
-  DollarSign,
-  BookOpen,
-  ClipboardList,
-  Trophy,
   FileText,
-  Sparkles,
   Users,
-  Flag,
-  Compass,
 } from 'lucide-react'
 
 const navItems = [
-  { href: '/habits', label: 'Привычки', icon: CheckSquare },
-  { href: '/goals', label: 'Цели', icon: Target },
-  { href: '/people', label: 'Окружение', icon: Users },
-  { href: '/timeline', label: 'История', icon: Flag },
-  { href: '/balance', label: 'Баланс', icon: Compass },
-  { href: '/finances', label: 'Финансы', icon: DollarSign },
-  { href: '/books', label: 'Книги', icon: BookOpen },
-  { href: '/plans', label: 'Планы', icon: ClipboardList },
   { href: '/notebook', label: 'Блокнот', icon: FileText },
+  { href: '/people', label: 'Окружение', icon: Users },
 ]
 
 export default function Sidebar() {
@@ -39,7 +23,7 @@ export default function Sidebar() {
     <aside className="w-[220px] min-w-[220px] h-screen bg-white border-r border-slate-100 flex flex-col sticky top-0 z-20 select-none">
       {/* Логотип */}
       <div className="px-5 py-5 border-b border-slate-100 flex items-center justify-between">
-        <Link href="/habits" className="flex items-center gap-2 group">
+        <Link href="/notebook" className="flex items-center gap-2 group">
           <span className="text-xl font-bold tracking-tight text-slate-900">aki</span>
           <span className="w-1.5 h-1.5 rounded-full bg-slate-900" />
         </Link>

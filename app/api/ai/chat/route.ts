@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { processChatMessage } from '@/lib/chat'
 import { createServiceClient } from '@/lib/supabase'
 
+export const maxDuration = 60
+
 export async function GET(req: NextRequest) {
   try {
     const sessionCookie = req.cookies.get('aki_session')?.value

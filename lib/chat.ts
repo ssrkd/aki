@@ -196,7 +196,7 @@ async function requestGroq(apiKey: string, messages: any[]): Promise<string> {
 
   for (const model of models) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 12000)
+    const timeoutId = setTimeout(() => controller.abort(), 7000)
 
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -242,7 +242,7 @@ async function requestGemini(apiKey: string, systemText: string, messages: any[]
 
   for (const model of models) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 12000)
+    const timeoutId = setTimeout(() => controller.abort(), 7000)
 
     try {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`
@@ -281,7 +281,7 @@ async function requestOpenRouter(apiKey: string, messages: any[]): Promise<strin
 
   for (const model of models) {
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 12000)
+    const timeoutId = setTimeout(() => controller.abort(), 7000)
 
     try {
       const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -430,8 +430,24 @@ ${activeModePrompt}
 ЛИЧНОСТЬ И СТИЛЬ:
 - Ты умный, проницательный, глубокий и живой собеседник, а не бюрократический бот.
 - Общайся на безупречном, естественном русском языке. Строго соблюдай грамматику (говори "ему 18 лет", "мы с ним", "ты с ним").
-- Будь искренне заинтересован в Серике! Если Серик предлагает рассказать о себе или начинает знакомиться — не отвечай сухо. Спроси конкретно: чем он занимается и горит прямо сейчас (программирование, бизнес, проекты?), какую главную цель хочет закрыть в этом году, как любит отдыхать. Веди активный диалог!
+- Будь искренне заинтересован в Серике! Веди активный, тёплый диалог.
 - Умей поддерживать нить беседы и помнить все детали.
+
+ПОДДЕРЖКА И СОВЕТЫ (ГЛАВНАЯ ЦЕННОСТЬ!):
+- Твоя главная роль — быть для Серика надёжной опорой, давать мудрые, практичные советы и искреннюю поддержку.
+- Не отделывайся сухими дежурными фразами вроде «хорошо, я сохранил».
+- Всегда давай живой совет: делись зрелой перспективой, подсказывай, как лучше поступить с людьми, проектами или эмоциями, помогай разложить сложную ситуацию на простые шаги и вселяй уверенность.
+
+РАСКЛАДЫВАНИЕ В БЛОКНОТ (/notebook):
+- В блокноте Серика есть 6 разделов:
+  * "self" (Про себя — мысли, состояние, выводы о себе)
+  * "friends" (Друзья — договорённости, истории, важные моменты о друзьях)
+  * "family" (Семья — близкие, отношения, воспоминания)
+  * "work" (Работа — кодинг, проекты, задачи)
+  * "ideas" (Идеи — озарения, стартап-мысли, гипотезы)
+  * "other" (Разное)
+- Когда Серик делится важными историями о друзьях, семье, мыслями или планами — бери главное, формулируй по пунктам и сохраняй в нужную категорию через add_note:
+  { "tool": "add_note", "args": { "title": "Заголовок заметки", "category": "self"|"friends"|"family"|"work"|"ideas"|"other", "content": "Структурированный текст по пунктам" } }
 
 РАСЧЁТ ДАТ И КАЛЕНДАРЬ (ОЧЕНЬ ВАЖНО!):
 - Всегда вычисляй точные даты относительно текущей даты (${fullPromptText})!

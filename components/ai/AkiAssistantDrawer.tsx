@@ -15,14 +15,23 @@ import {
   ShieldCheck,
   RefreshCw,
   Cpu,
+  History,
+  Check,
 } from 'lucide-react'
 
-interface Message {
+export interface Message {
   id: string
   role: 'user' | 'assistant'
   content: string
   actions?: { tool: string; details: string; success: boolean }[]
   provider?: string
+}
+
+export interface ChatSession {
+  id: string
+  title: string
+  created_at: number
+  messages: Message[]
 }
 
 interface Thought {
@@ -40,6 +49,27 @@ const CATEGORIES: { key: Thought['category'] | 'all'; label: string }[] = [
   { key: 'principles', label: 'Принципы' },
 ]
 
+const defaultWelcomeMessage: Message = {
+  id: 'welcome',
+  role: 'assistant',
+  content:
+    'Привет, Серик! Я aki AI.\n\nПомогаю вести блокнот, досье друзей и раскладывать мысли по полочкам. Чем займёмся?',
+}
+
+const createNewSession = (title = 'Новый чат'): ChatSession => ({
+  id: 'sess_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+  title,
+  created_at: Date.now(),
+  messages: [
+    {
+      id: 'welcome_' + Date.now(),
+      role: 'assistant',
+      content:
+        'Привет, Серик! Открыт новый диалог. Что обсудим, какую мысль запишем или какой совет нужен?',
+    },
+  ],
+})
+
 export default function AkiAssistantDrawer() {
   const [isOpen, setIsOpen] = useState(false)
   const [activeTab, setActiveTab] = useState<'chat' | 'thoughts' | 'settings'>('chat')
@@ -52,64 +82,62 @@ export default function AkiAssistantDrawer() {
   const [thoughts, setThoughts] = useState<Thought[]>([])
   const [hasUnreadThoughts, setHasUnreadThoughts] = useState(false)
 
-  // Сохраненная история чата
-  const [messages, setMessages] = useState<Message[]>([
+  // Мульти-сессии чатов
+  const [sessions, setSessions] = useState<ChatSession[]>([
     {
-      id: 'welcome',
-      role: 'assistant',
-      content:
-        'Привет, Серик! Я aki AI.\n\nПомогаю вести трекер, раскладывать цели по полочкам и фиксировать важное. Чем займёмся?',
+      id: 'main',
+      title: 'Основной диалог',
+      created_at: Date.now(),
+      messages: [defaultWelcomeMessage],
     },
   ])
+  const [currentSessionId, setCurrentSessionId] = useState<string>('main')
+  const [showSessionsList, setShowSessionsList] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Загрузка сообщений из постоянной базы данных Supabase + localStorage
+  // 1. Загрузка сессий чатов из localStorage при старте
   useEffect(() => {
-    // 1. Быстрый показ из localStorage
     try {
-      const saved = localStorage.getItem('aki_chat_messages')
+      const saved = localStorage.getItem('aki_chat_sessions_v4')
       if (saved) {
         const parsed = JSON.parse(saved)
         if (Array.isArray(parsed) && parsed.length > 0) {
-          setMessages(parsed)
+          setSessions(parsed)
+          const lastActiveId = localStorage.getItem('aki_active_session_id_v4')
+          if (lastActiveId && parsed.some((s: ChatSession) => s.id === lastActiveId)) {
+            setCurrentSessionId(lastActiveId)
+          } else {
+            setCurrentSessionId(parsed[0].id)
+          }
         }
       }
     } catch {}
-
-    // 2. Синхронизация с сервером (база данных)
-    const syncDbChat = async () => {
-      try {
-        const res = await fetch('/api/ai/chat')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.messages && Array.isArray(data.messages) && data.messages.length > 0) {
-            const formatted: Message[] = data.messages.map((m: any) => ({
-              id: m.id || String(Math.random()),
-              role: m.role,
-              content: m.content.replace(/\*\*/g, '').trim(),
-            }))
-            setMessages(formatted)
-            localStorage.setItem('aki_chat_messages', JSON.stringify(formatted))
-          }
-        }
-      } catch {}
-    }
-
-    syncDbChat()
   }, [])
 
-  // Сохранение сообщений в localStorage
-  useEffect(() => {
+  // Сохранение сессий при изменении
+  const saveSessions = (updated: ChatSession[], activeId?: string) => {
+    setSessions(updated)
     try {
-      if (messages.length > 1) {
-        localStorage.setItem('aki_chat_messages', JSON.stringify(messages))
+      localStorage.setItem('aki_chat_sessions_v4', JSON.stringify(updated))
+      if (activeId) {
+        setCurrentSessionId(activeId)
+        localStorage.setItem('aki_active_session_id_v4', activeId)
       }
-    } catch {
-      // fallback
+    } catch {}
+  }
+
+  // Текущая активная сессия и её сообщения
+  const currentSession =
+    sessions.find((s) => s.id === currentSessionId) || sessions[0] || {
+      id: 'main',
+      title: 'Диалог',
+      created_at: Date.now(),
+      messages: [defaultWelcomeMessage],
     }
-  }, [messages])
+
+  const messages = currentSession.messages
 
   // Загрузка «мыслей аки»
   const fetchThoughts = async () => {
@@ -128,19 +156,15 @@ export default function AkiAssistantDrawer() {
           setHasUnreadThoughts(false)
         }
       }
-    } catch {
-      // fallback
-    }
+    } catch {}
   }
 
-  // Загружаем мысли при открытии виджета или смене вкладки
   useEffect(() => {
     if (isOpen) {
       fetchThoughts()
     }
   }, [isOpen, activeTab])
 
-  // Когда пользователь переключается на вкладку thoughts — сбрасываем уведомление
   const handleSelectThoughtsTab = () => {
     setActiveTab('thoughts')
     localStorage.setItem('aki_seen_thoughts_count', thoughts.length.toString())
@@ -174,11 +198,40 @@ export default function AkiAssistantDrawer() {
   }, [isOpen])
 
   useEffect(() => {
-    if (isOpen && activeTab === 'chat') {
+    if (isOpen && activeTab === 'chat' && !showSessionsList) {
       messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
-  }, [messages, isOpen, activeTab])
+  }, [messages, isOpen, activeTab, showSessionsList])
 
+  // Создать новый чат
+  const handleStartNewChat = () => {
+    const newSession = createNewSession('Новый чат')
+    const updated = [newSession, ...sessions]
+    saveSessions(updated, newSession.id)
+    setShowSessionsList(false)
+    setTimeout(() => inputRef.current?.focus(), 50)
+  }
+
+  // Переключить чат
+  const handleSwitchSession = (sessionId: string) => {
+    setCurrentSessionId(sessionId)
+    localStorage.setItem('aki_active_session_id_v4', sessionId)
+    setShowSessionsList(false)
+  }
+
+  // Удалить чат
+  const handleDeleteSession = (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (sessions.length <= 1) {
+      handleStartNewChat()
+      return
+    }
+    const remaining = sessions.filter((s) => s.id !== sessionId)
+    const nextActive = currentSessionId === sessionId ? remaining[0].id : currentSessionId
+    saveSessions(remaining, nextActive)
+  }
+
+  // Отправка сообщения
   const handleSend = async (textToSend?: string) => {
     const prompt = (textToSend || input).trim()
     if (!prompt || isLoading) return
@@ -189,14 +242,26 @@ export default function AkiAssistantDrawer() {
       content: prompt,
     }
 
-    const updated = [...messages, userMsg]
-    setMessages(updated)
+    // Если чат только начат — присваиваем ему заголовок из первых слов сообщения
+    let updatedTitle = currentSession.title
+    if (currentSession.title === 'Новый чат' || currentSession.title === 'Основной диалог') {
+      updatedTitle = prompt.length > 25 ? prompt.slice(0, 25).trim() + '...' : prompt
+    }
+
+    const updatedMessages = [...currentSession.messages, userMsg]
+
+    // Сохраняем состояние с сообщением пользователя
+    const updatedSessionsWithUser = sessions.map((s) =>
+      s.id === currentSession.id ? { ...s, title: updatedTitle, messages: updatedMessages } : s
+    )
+    saveSessions(updatedSessionsWithUser, currentSession.id)
+
     setInput('')
     setIsLoading(true)
 
     try {
-      const payload = updated
-        .filter((m) => m.id !== 'welcome')
+      const payload = updatedMessages
+        .filter((m) => !m.id.startsWith('welcome'))
         .slice(-16)
         .map((m) => ({ role: m.role, content: m.content }))
 
@@ -209,7 +274,6 @@ export default function AkiAssistantDrawer() {
       const data = await res.json()
 
       if (res.ok && data.reply) {
-        // Убираем ** из текста
         const cleanReply = data.reply.replace(/\*\*/g, '').trim()
         const assistantMsg: Message = {
           id: (Date.now() + 1).toString(),
@@ -218,52 +282,70 @@ export default function AkiAssistantDrawer() {
           actions: data.actions || [],
           provider: data.provider,
         }
-        setMessages((prev) => [...prev, assistantMsg])
+
+        const finalMessages = [...updatedMessages, assistantMsg]
+        const finalSessions = sessions.map((s) =>
+          s.id === currentSession.id ? { ...s, title: updatedTitle, messages: finalMessages } : s
+        )
+        saveSessions(finalSessions, currentSession.id)
 
         if (data.actions && data.actions.length > 0) {
           window.dispatchEvent(new CustomEvent('aki-db-changed'))
           fetchThoughts()
         }
       } else {
-        setMessages((prev) => [
-          ...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: 'assistant',
-            content: data.error || 'Ошибка при ответе aki AI.',
-          },
-        ])
-      }
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
+        const errorMsg: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: 'Ошибка соединения с aki AI.',
-        },
-      ])
+          content: data.error || 'Ошибка при ответе aki AI.',
+        }
+        const finalMessages = [...updatedMessages, errorMsg]
+        saveSessions(
+          sessions.map((s) => (s.id === currentSession.id ? { ...s, messages: finalMessages } : s)),
+          currentSession.id
+        )
+      }
+    } catch {
+      const connErrorMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: 'Ошибка соединения с сервером aki AI.',
+      }
+      saveSessions(
+        sessions.map((s) =>
+          s.id === currentSession.id ? { ...s, messages: [...updatedMessages, connErrorMsg] } : s
+        ),
+        currentSession.id
+      )
     } finally {
       setIsLoading(false)
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }
 
-  // Сформировать новую мысль (экономно по токенам)
+  // Генерация мысли аки
   const handleReflect = async () => {
     if (isReflecting) return
     setIsReflecting(true)
     try {
-      const res = await fetch('/api/ai/thoughts', {
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'reflect' }),
+        body: JSON.stringify({
+          messages: [
+            {
+              role: 'user',
+              content:
+                'Сделай краткое психологическое наблюдение о Серике на основе того, что ты о нём знаешь. Сохрани через add_thought в категорию self, friends, work или principles.',
+            },
+          ],
+        }),
       })
-      const data = await res.json()
-      if (data.success) {
+      if (res.ok) {
         await fetchThoughts()
+        window.dispatchEvent(new CustomEvent('aki-db-changed'))
       }
-    } finally {
+    } catch {} finally {
       setIsReflecting(false)
     }
   }
@@ -294,24 +376,15 @@ export default function AkiAssistantDrawer() {
     await fetch(`/api/ai/thoughts?id=${id}`, { method: 'DELETE' })
   }
 
-  const handleNewChat = async () => {
-    const init: Message[] = [
-      {
-        id: 'welcome-' + Date.now(),
-        role: 'assistant',
-        content: 'Привет, Серик! Открыт новый чистый диалог. О чём поговорим или что запланируем?',
-      },
-    ]
-    setMessages(init)
+  // Полная очистка всех диалогов (в Настройках)
+  const handleClearAllHistory = async () => {
+    const freshSession = createNewSession('Основной диалог')
+    saveSessions([freshSession], freshSession.id)
     localStorage.removeItem('aki_chat_messages')
     try {
       await fetch('/api/ai/chat', { method: 'DELETE' })
     } catch {}
-    setTimeout(() => inputRef.current?.focus(), 50)
-  }
-
-  const handleClearHistory = () => {
-    handleNewChat()
+    setActiveTab('chat')
   }
 
   const filteredThoughts =
@@ -344,75 +417,152 @@ export default function AkiAssistantDrawer() {
         <div className="fixed bottom-20 right-6 z-50 w-[390px] sm:w-[420px] max-w-[calc(100vw-24px)] h-[560px] max-h-[calc(100vh-100px)] bg-white rounded-2xl shadow-2xl border border-slate-200/90 flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
           
           {/* Шапка виджета с переключением вкладок */}
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 select-none">
-            <div className="flex items-center gap-2.5">
+          <div className="px-3.5 py-2.5 border-b border-slate-100 flex items-center justify-between bg-slate-50/80 select-none">
+            <div className="flex items-center gap-2">
               <img
                 src="/photo/aki.webp"
                 alt="aki"
-                className="w-7 h-7 rounded-full object-cover border border-slate-200"
+                className="w-7 h-7 rounded-full object-cover border border-slate-200 flex-shrink-0"
               />
-              <div>
-                <h3 className="text-xs font-bold text-slate-900 leading-none">aki AI</h3>
-                <span className="text-[10px] text-slate-400 font-mono">личный советник</span>
+              <div className="min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <h3 className="text-xs font-bold text-slate-900 leading-none">aki AI</h3>
+                  {activeTab === 'chat' && (
+                    <span className="text-[10px] text-slate-500 font-medium truncate max-w-[90px]">
+                      • {currentSession.title}
+                    </span>
+                  )}
+                </div>
+                <span className="text-[10px] text-slate-400 font-mono">советник и друг</span>
               </div>
             </div>
 
             {/* Вкладки: Чат / Мысль аки / Настройки */}
-            <div className="flex items-center gap-1 bg-slate-200/60 p-0.5 rounded-lg text-xs">
-              <button
-                onClick={() => setActiveTab('chat')}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
-                  activeTab === 'chat'
-                    ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                Чат
-              </button>
-              <button
-                onClick={handleSelectThoughtsTab}
-                className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1.5 ${
-                  activeTab === 'thoughts'
-                    ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-              >
-                <span>мысль аки</span>
-                {hasUnreadThoughts && activeTab !== 'thoughts' && (
-                  <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
-                )}
-              </button>
-              <button
-                onClick={() => setActiveTab('settings')}
-                className={`p-1 rounded-md text-[11px] transition-all ${
-                  activeTab === 'settings'
-                    ? 'bg-white text-slate-900 shadow-xs'
-                    : 'text-slate-500 hover:text-slate-800'
-                }`}
-                title="Настройки"
-              >
-                <Settings size={13} />
-              </button>
-            </div>
+            <div className="flex items-center gap-1">
+              <div className="flex items-center gap-0.5 bg-slate-200/60 p-0.5 rounded-lg text-xs">
+                <button
+                  onClick={() => {
+                    setActiveTab('chat')
+                    setShowSessionsList(false)
+                  }}
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all ${
+                    activeTab === 'chat'
+                      ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  Чат
+                </button>
+                <button
+                  onClick={handleSelectThoughtsTab}
+                  className={`px-2 py-1 rounded-md text-[11px] font-medium transition-all flex items-center gap-1 ${
+                    activeTab === 'thoughts'
+                      ? 'bg-white text-slate-900 shadow-2xs font-semibold'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  <span>мысль</span>
+                  {hasUnreadThoughts && activeTab !== 'thoughts' && (
+                    <span className="w-1.5 h-1.5 bg-blue-600 rounded-full animate-pulse" />
+                  )}
+                </button>
+                <button
+                  onClick={() => {
+                    setActiveTab('settings')
+                    setShowSessionsList(false)
+                  }}
+                  className={`p-1 rounded-md text-[11px] transition-all ${
+                    activeTab === 'settings'
+                      ? 'bg-white text-slate-900 shadow-2xs'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                  title="Настройки"
+                >
+                  <Settings size={13} />
+                </button>
+              </div>
 
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={handleNewChat}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/80 shadow-2xs transition-all"
-                title="Начать новый диалог"
-              >
-                <Plus size={11} />
-                <span>Новый чат</span>
-              </button>
+              {/* Кнопки управления чатом: Список диалогов и Новый чат */}
+              {activeTab === 'chat' && (
+                <div className="flex items-center gap-1 pl-1 border-l border-slate-200">
+                  <button
+                    onClick={() => setShowSessionsList(!showSessionsList)}
+                    className={`p-1.5 rounded-lg text-[11px] font-medium transition-colors ${
+                      showSessionsList
+                        ? 'bg-slate-900 text-white'
+                        : 'text-slate-600 hover:bg-slate-200/60'
+                    }`}
+                    title="Все диалоги"
+                  >
+                    <History size={13} />
+                  </button>
+
+                  <button
+                    onClick={handleStartNewChat}
+                    className="p-1.5 rounded-lg text-slate-700 bg-white hover:bg-slate-100 border border-slate-200/80 shadow-2xs transition-all"
+                    title="Новый диалог"
+                  >
+                    <Plus size={13} />
+                  </button>
+                </div>
+              )}
 
               <button
                 onClick={() => setIsOpen(false)}
-                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors"
+                className="p-1 rounded-md text-slate-400 hover:text-slate-700 hover:bg-slate-200/50 transition-colors ml-0.5"
               >
                 <X size={15} />
               </button>
             </div>
           </div>
+
+          {/* ВЫПАДАЮЩАЯ ПАНЕЛЬ СПИСКА ДИАЛОГОВ */}
+          {activeTab === 'chat' && showSessionsList && (
+            <div className="p-3 bg-slate-50 border-b border-slate-200 max-h-[220px] overflow-y-auto space-y-1.5 animate-in slide-in-from-top-2 duration-150 shadow-inner">
+              <div className="flex items-center justify-between pb-1 text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
+                <span>Твои диалоги ({sessions.length})</span>
+                <button
+                  onClick={handleStartNewChat}
+                  className="text-slate-900 hover:underline flex items-center gap-1 font-bold lowercase text-[11px]"
+                >
+                  <Plus size={11} /> + новый чат
+                </button>
+              </div>
+
+              {sessions.map((sess) => {
+                const isActive = sess.id === currentSessionId
+                return (
+                  <div
+                    key={sess.id}
+                    onClick={() => handleSwitchSession(sess.id)}
+                    className={`p-2 rounded-xl text-xs flex items-center justify-between gap-2 cursor-pointer transition-all ${
+                      isActive
+                        ? 'bg-slate-900 text-white shadow-xs font-semibold'
+                        : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200/60'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <MessageSquare size={13} className={isActive ? 'text-white' : 'text-slate-400'} />
+                      <span className="truncate text-xs">{sess.title}</span>
+                    </div>
+
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      {isActive && <Check size={12} className="text-emerald-400 mr-1" />}
+                      <button
+                        onClick={(e) => handleDeleteSession(sess.id, e)}
+                        className={`p-1 rounded hover:opacity-100 transition-opacity ${
+                          isActive ? 'text-white/70 hover:text-red-300' : 'text-slate-400 hover:text-red-500'
+                        }`}
+                        title="Удалить диалог"
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
 
           {/* ВКЛАДКА 1: ЧАТ */}
           {activeTab === 'chat' && (
@@ -464,7 +614,7 @@ export default function AkiAssistantDrawer() {
                 {isLoading && (
                   <div className="flex gap-2 items-center text-slate-400 text-xs">
                     <img src="/photo/aki.webp" alt="aki" className="w-5 h-5 rounded-full object-cover animate-pulse" />
-                    <span className="text-[11px]">aki думает...</span>
+                    <span className="text-[11px]">aki думает и формирует совет...</span>
                   </div>
                 )}
 
@@ -506,7 +656,7 @@ export default function AkiAssistantDrawer() {
               <div className="p-3 border-b border-slate-100 bg-white flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-slate-900">мысль аки</h4>
-                  <p className="text-[10px] text-slate-400">Что aki знает и думает о вас</p>
+                  <p className="text-[10px] text-slate-400">Накопленные знания и память о тебе</p>
                 </div>
 
                 <button
@@ -536,7 +686,7 @@ export default function AkiAssistantDrawer() {
                 ))}
               </div>
 
-              {/* Список мыслей */}
+              {/* Список мыслей с ЧЁТКИМ РАЗДЕЛЕНИЕМ КАТЕГОРИИ И ТЕКСТА */}
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
                 {filteredThoughts.length === 0 ? (
                   <div className="text-center py-10">
@@ -549,28 +699,41 @@ export default function AkiAssistantDrawer() {
                   filteredThoughts.map((t) => (
                     <div
                       key={t.id}
-                      className="bg-white p-2.5 rounded-xl border border-slate-100 shadow-xs flex items-start justify-between gap-2 group"
+                      className="bg-white p-3 rounded-xl border border-slate-100 shadow-2xs flex items-start justify-between gap-2.5 group hover:border-slate-200 transition-all"
                     >
-                      <div>
-                        <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 mr-2 inline-block">
-                          {t.category === 'self'
-                            ? 'Обо мне'
-                            : t.category === 'friends'
-                            ? 'Друзья'
-                            : t.category === 'work'
-                            ? 'Работа'
-                            : 'Принцип'}
-                        </span>
-                        <span className="text-xs text-slate-800 leading-relaxed">
-                          {t.content.replace(/^(?:Друг|Обо мне|Работа|Принцип):\s*/i, '')}
-                        </span>
+                      <div className="flex-1 space-y-1">
+                        <div>
+                          <span
+                            className={`text-[9px] uppercase font-mono px-2 py-0.5 rounded-md font-semibold tracking-wider inline-block ${
+                              t.category === 'self'
+                                ? 'bg-blue-50 text-blue-700'
+                                : t.category === 'friends'
+                                ? 'bg-emerald-50 text-emerald-700'
+                                : t.category === 'principles'
+                                ? 'bg-amber-50 text-amber-700'
+                                : 'bg-purple-50 text-purple-700'
+                            }`}
+                          >
+                            {t.category === 'self'
+                              ? 'Обо мне'
+                              : t.category === 'friends'
+                              ? 'Друзья'
+                              : t.category === 'work'
+                              ? 'Работа'
+                              : 'Принцип'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-800 leading-relaxed font-normal">
+                          {t.content.replace(/^(?:Друг|Обо мне|Работа|Принцип|Друзья):\s*/i, '')}
+                        </p>
                       </div>
+
                       <button
                         onClick={() => handleDeleteThought(t.id)}
                         className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-red-500 transition-opacity"
                         title="Удалить"
                       >
-                        <Trash2 size={11} />
+                        <Trash2 size={12} />
                       </button>
                     </div>
                   ))
@@ -599,9 +762,9 @@ export default function AkiAssistantDrawer() {
                 <button
                   type="submit"
                   disabled={!newThoughtText.trim()}
-                  className="px-2.5 py-1.5 bg-slate-900 text-white rounded-lg text-xs disabled:opacity-30"
+                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-medium transition-colors"
                 >
-                  <Plus size={13} />
+                  Записать
                 </button>
               </form>
             </div>
@@ -609,35 +772,41 @@ export default function AkiAssistantDrawer() {
 
           {/* ВКЛАДКА 3: НАСТРОЙКИ */}
           {activeTab === 'settings' && (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 text-xs bg-slate-50/30">
-              <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-xs space-y-2">
-                <h4 className="font-bold text-slate-900">Режим и модели</h4>
-                <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-600">Основной движок</span>
-                  <span className="font-mono text-emerald-600 font-medium">Groq (мгновенный)</span>
+            <div className="flex-1 p-4 space-y-4 overflow-y-auto text-xs bg-slate-50/30">
+              <div className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-2xs space-y-2">
+                <div className="flex items-center gap-2">
+                  <Cpu size={16} className="text-slate-700" />
+                  <h4 className="font-bold text-slate-900">Искусственный интеллект</h4>
                 </div>
-                <div className="flex items-center justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-600">Резерв 1</span>
-                  <span className="font-mono text-slate-500">Gemini 3.8 Flash</span>
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  aki AI работает с автоматическим переключением провайдеров для 100% стабильности:
+                </p>
+                <div className="flex items-center justify-between text-[11px] pt-1 border-t border-slate-100">
+                  <span className="text-slate-600">Основной:</span>
+                  <span className="font-mono text-slate-900 font-semibold">Groq (Llama / Qwen)</span>
                 </div>
-                <div className="flex items-center justify-between py-1">
-                  <span className="text-slate-600">Резерв 2</span>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-600">Резерв 1:</span>
+                  <span className="font-mono text-slate-700">Google Gemini</span>
+                </div>
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-slate-600">Резерв 2:</span>
                   <span className="font-mono text-slate-500">OpenRouter</span>
                 </div>
               </div>
 
-              <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-xs space-y-2">
+              <div className="bg-white p-3.5 rounded-xl border border-slate-100 shadow-2xs space-y-2">
                 <h4 className="font-bold text-slate-900">Память и данные</h4>
-                <p className="text-[11px] text-slate-500">
-                  История диалога сохраняется на вашем устройстве, а мысли и правила aki AI фиксируются в Supabase.
+                <p className="text-[11px] text-slate-500 leading-relaxed">
+                  Диалоги сохраняются изолированно по сессиям на твоем устройстве, а ключевые факты и знания aki AI бережно фиксируются в облачной базе.
                 </p>
                 <div className="pt-2">
                   <button
-                    onClick={handleClearHistory}
+                    onClick={handleClearAllHistory}
                     className="w-full py-2 px-3 rounded-lg border border-slate-200 hover:border-red-200 hover:bg-red-50 text-slate-700 hover:text-red-600 text-xs font-medium transition-colors flex items-center justify-center gap-1.5"
                   >
                     <Trash2 size={12} />
-                    <span>Очистить историю диалога</span>
+                    <span>Очистить историю всех диалогов</span>
                   </button>
                 </div>
               </div>

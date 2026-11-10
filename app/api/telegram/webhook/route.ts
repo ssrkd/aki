@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { processChatMessage } from '@/lib/chat'
 
-// Отправка текстового сообщения в Telegram
+export const maxDuration = 60
+
+// Отправка текстового сообщения в Telegram (с защитой от сбоев HTML-парсинга)
 async function sendTelegramMessage(
   token: string,
   chatId: number | string,
@@ -10,7 +12,7 @@ async function sendTelegramMessage(
   replyMarkup?: any
 ) {
   try {
-    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -20,6 +22,22 @@ async function sendTelegramMessage(
         reply_markup: replyMarkup,
       }),
     })
+
+    if (!res.ok) {
+      const errText = await res.text()
+      console.warn('Telegram HTML send failed, retrying plain text:', errText)
+      // Если Telegram отклонил из-за невалидного HTML (например <РЕАЛЬНЫЙ_ID>), отправляем чистый текст
+      const cleanText = text.replace(/<[^>]*>/g, '')
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: cleanText,
+          reply_markup: replyMarkup,
+        }),
+      })
+    }
   } catch (err) {
     console.error('Ошибка отправки сообщения в Telegram:', err)
   }
@@ -418,6 +436,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true })
   } catch (err: any) {
     console.error('Ошибка обработки webhook Telegram:', err)
-    return NextResponse.json({ ok: false, error: err?.message }, { status: 500 })
+    try {
+      const botToken = process.env.TELEGRAM_BOT_TOKEN
+      if (botToken) {
+        await sendTelegramMessage(
+          botToken,
+          996317285,
+          `⚠️ Не удалось ответить: ${err?.message || 'ошибка сервера'}.\nПопробуй написать ещё раз.`
+        )
+      }
+    } catch {}
+    return NextResponse.json({ ok: true }) // возвращаем ok: true, чтобы Telegram не долбил повторами
   }
 }

@@ -13,9 +13,13 @@ export default function LoginPage() {
   const [countdown, setCountdown] = useState(0)
   const inputs = useRef<(HTMLInputElement | null)[]>([])
   const router = useRouter()
+  const initialRequestedRef = useRef(false)
+  const lastRequestTimeRef = useRef(0)
 
-  // Запрос кода в Telegram при открытии страницы
+  // Запрос кода в Telegram при открытии страницы (ровно 1 раз)
   useEffect(() => {
+    if (initialRequestedRef.current) return
+    initialRequestedRef.current = true
     handleRequestCode(true)
   }, [])
 
@@ -29,7 +33,10 @@ export default function LoginPage() {
   }, [countdown])
 
   const handleRequestCode = async (isInitial = false) => {
+    const now = Date.now()
+    if (now - lastRequestTimeRef.current < 4000) return
     if (isRequesting || (countdown > 0 && !isInitial)) return
+    lastRequestTimeRef.current = now
     setIsRequesting(true)
     setError('')
 
@@ -104,7 +111,7 @@ export default function LoginPage() {
       const data = await res.json()
 
       if (res.ok && data.success) {
-        router.push('/habits')
+        router.push('/notebook')
       } else {
         setError(data.error || 'Неверный или истёкший код')
         setOtp(['', '', '', ''])

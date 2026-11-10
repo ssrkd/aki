@@ -496,7 +496,7 @@ export async function executeDBTool(name: string, args: any): Promise<ActionLog>
             .from('ai_memory')
             .select('id')
             .eq('category', 'friends')
-            .ilike('content', `${personName}%`)
+            .ilike('content', `%${personName}%`)
             .limit(1)
 
           if (existingMem && existingMem.length > 0) {

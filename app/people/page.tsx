@@ -101,64 +101,28 @@ export default function PeoplePage() {
             </p>
           </div>
 
-          {/* Фильтры и поиск */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
-              <input
-                type="text"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Поиск по имени или городу..."
-                className="pl-8 pr-3 py-1.5 text-xs bg-white border border-slate-200 rounded-xl outline-none focus:border-slate-900 transition-colors w-44 sm:w-56 text-slate-900"
-              />
-            </div>
-
-            <div className="flex bg-white border border-slate-200 rounded-xl p-0.5 text-xs">
-              {[
-                { key: 'all', label: 'Все' },
-                { key: 'friend', label: 'Друзья' },
-                { key: 'family', label: 'Семья' },
-                { key: 'colleague', label: 'Коллеги' },
-              ].map(({ key, label }) => (
-                <button
-                  key={key}
-                  onClick={() => setFilterRelation(key)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
-                    filterRelation === key
-                      ? 'bg-slate-900 text-white shadow-xs'
-                      : 'text-slate-600 hover:text-slate-900'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
+          {/* Только фильтр по типу — поиск убран */}
+          <div className="flex bg-white border border-slate-200 rounded-xl p-0.5 text-xs">
+            {[
+              { key: 'all', label: 'Все' },
+              { key: 'friend', label: 'Друзья' },
+              { key: 'family', label: 'Семья' },
+              { key: 'colleague', label: 'Коллеги' },
+            ].map(({ key, label }) => (
+              <button
+                key={key}
+                onClick={() => setFilterRelation(key)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                  filterRelation === key
+                    ? 'bg-slate-900 text-white shadow-xs'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
         </div>
-
-        {/* Быстрое добавление одной строкой */}
-        <form onSubmit={handleQuickAdd} className="mb-6">
-          <div className="flex items-center bg-white border border-slate-200/90 rounded-2xl p-1.5 shadow-xs focus-within:border-slate-900 transition-all">
-            <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-slate-400 ml-1">
-              <Plus size={16} />
-            </div>
-            <input
-              type="text"
-              value={quickInput}
-              onChange={(e) => setQuickInput(e.target.value)}
-              placeholder="Добавить человека... Например: Ансар, 18 лет, Кызылорда, друг"
-              className="flex-1 px-3 py-2 text-xs sm:text-sm bg-transparent outline-none text-slate-900 placeholder:text-slate-400"
-            />
-            <button
-              type="submit"
-              disabled={!quickInput.trim()}
-              className="px-4 py-2 rounded-xl bg-slate-900 text-white text-xs font-medium hover:bg-slate-800 disabled:opacity-30 transition-all"
-            >
-              Добавить
-            </button>
-          </div>
-        </form>
 
         {/* Список карточек людей */}
         {loading ? (
@@ -170,7 +134,7 @@ export default function PeoplePage() {
             </div>
             <h3 className="text-sm font-semibold text-slate-800 mb-1">Пока нет карточек</h3>
             <p className="text-xs text-slate-400 max-w-sm mx-auto">
-              Напиши в поле выше имя друга или расскажи о нём aki AI в чате — досье сформируется автоматически.
+              Расскажи aki AI о своих друзьях и близких в чате — досье сформируется автоматически.
             </p>
           </div>
         ) : (

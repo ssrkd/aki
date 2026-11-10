@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { processChatMessage } from '@/lib/chat'
+import { getBotToken } from '@/lib/keys'
 
 export const maxDuration = 60
 
@@ -71,7 +72,9 @@ async function sendChatAction(token: string, chatId: number | string, action = '
 
 // Транскрибация голосового сообщения через Groq Whisper
 async function transcribeVoice(botToken: string, fileId: string): Promise<string> {
-  const groqKey = process.env.GROQ_API_KEY_1 || process.env.GROQ_API_KEY_2
+  const { getAIKeys } = await import('@/lib/keys')
+  const keys = await getAIKeys()
+  const groqKey = keys.groq1 || keys.groq2
   if (!groqKey) {
     throw new Error('Groq API ключ не настроен для Whisper')
   }
@@ -118,7 +121,7 @@ const MODE_MAP: Record<string, { mode: string; title: string; desc: string }> = 
 
 export async function POST(req: NextRequest) {
   try {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN
+    const botToken = getBotToken()
     if (!botToken) {
       return NextResponse.json({ ok: false, error: 'Token missing' }, { status: 500 })
     }
@@ -437,7 +440,7 @@ export async function POST(req: NextRequest) {
   } catch (err: any) {
     console.error('Ошибка обработки webhook Telegram:', err)
     try {
-      const botToken = process.env.TELEGRAM_BOT_TOKEN
+      const botToken = getBotToken()
       if (botToken) {
         await sendTelegramMessage(
           botToken,

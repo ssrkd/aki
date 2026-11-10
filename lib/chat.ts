@@ -1,5 +1,6 @@
 import { createServiceClient } from '@/lib/supabase'
 import { executeDBTool, ActionLog, getAIMemories } from '@/lib/ai'
+import { getAIKeys } from '@/lib/keys'
 
 export interface ChatMessage {
   role: 'user' | 'assistant' | 'system'
@@ -536,25 +537,19 @@ ${dbOverview}`
     fullMessages.push({ role: 'user', content: userMessage })
   }
 
-  // 4. Провайдеры (Groq -> Gemini -> OpenRouter) с валидацией ключей
+  // 4. Провайдеры (Groq -> Gemini -> OpenRouter) с 3-уровневой защитой ключей (process.env -> Supabase -> Builtin)
+  const keys = await getAIKeys()
   const providers: { name: string; run: () => Promise<string> }[] = []
 
-  const groq1 = process.env.GROQ_API_KEY_1 || process.env.GROQ_API_KEY
-  const groq2 = process.env.GROQ_API_KEY_2
-  const gemini1 = process.env.GEMINI_API_KEY_1 || process.env.GEMINI_API_KEY
-  const gemini2 = process.env.GEMINI_API_KEY_2
-  const openrouter1 = process.env.OPENROUTER_API_KEY_1 || process.env.OPENROUTER_API_KEY
-  const openrouter2 = process.env.OPENROUTER_API_KEY_2
-
-  if (groq1) providers.push({ name: 'Groq-1', run: () => requestGroq(groq1, fullMessages) })
-  if (groq2) providers.push({ name: 'Groq-2', run: () => requestGroq(groq2, fullMessages) })
-  if (gemini1) providers.push({ name: 'Gemini-1', run: () => requestGemini(gemini1, systemPrompt, fullMessages) })
-  if (gemini2) providers.push({ name: 'Gemini-2', run: () => requestGemini(gemini2, systemPrompt, fullMessages) })
-  if (openrouter1) providers.push({ name: 'OpenRouter-1', run: () => requestOpenRouter(openrouter1, fullMessages) })
-  if (openrouter2) providers.push({ name: 'OpenRouter-2', run: () => requestOpenRouter(openrouter2, fullMessages) })
+  if (keys.groq1) providers.push({ name: 'Groq-1', run: () => requestGroq(keys.groq1, fullMessages) })
+  if (keys.groq2) providers.push({ name: 'Groq-2', run: () => requestGroq(keys.groq2, fullMessages) })
+  if (keys.gemini1) providers.push({ name: 'Gemini-1', run: () => requestGemini(keys.gemini1, systemPrompt, fullMessages) })
+  if (keys.gemini2) providers.push({ name: 'Gemini-2', run: () => requestGemini(keys.gemini2, systemPrompt, fullMessages) })
+  if (keys.openrouter1) providers.push({ name: 'OpenRouter-1', run: () => requestOpenRouter(keys.openrouter1, fullMessages) })
+  if (keys.openrouter2) providers.push({ name: 'OpenRouter-2', run: () => requestOpenRouter(keys.openrouter2, fullMessages) })
 
   if (providers.length === 0) {
-    throw new Error('Ключи ИИ не настроены в переменных окружения Vercel (GROQ_API_KEY_1, GEMINI_API_KEY_1 или OPENROUTER_API_KEY_1). Добавьте их в настройках проекта Vercel -> Settings -> Environment Variables.')
+    throw new Error('Ключи ИИ не настроены. Проверьте доступность API ключей.')
   }
 
   let rawReply = ''

@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { addAIThought } from '@/lib/ai'
+import { getBotToken, getCronSecret, getKeySync } from '@/lib/keys'
 
 export async function POST(req: NextRequest) {
   try {
     const key = req.nextUrl.searchParams.get('key') || req.headers.get('authorization')?.replace('Bearer ', '')
     const validKeys = [
       'aki_cron_secret_srk_2026',
+      getCronSecret(),
+      getKeySync('SUPABASE_SERVICE_ROLE_KEY'),
       process.env.CRON_SECRET,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
     ].filter(Boolean)
@@ -76,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 3. Отправляем в Telegram Серику
-    const botToken = process.env.TELEGRAM_BOT_TOKEN
+    const botToken = getBotToken()
     const { data: users } = await supabase.from('telegram_users').select('chat_id').limit(1)
     const targetChatId = users?.[0]?.chat_id
 

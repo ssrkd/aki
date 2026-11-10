@@ -40,9 +40,11 @@ export default function NotebookPage() {
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!newTitle.trim()) return
-    await addNote(newTitle.trim(), newCategory, '')
-    setNewTitle('')
-    setIsCreating(false)
+    const ok = await addNote(newTitle.trim(), newCategory, '')
+    if (ok) {
+      setNewTitle('')
+      setIsCreating(false)
+    }
   }
 
   return (
@@ -98,20 +100,20 @@ export default function NotebookPage() {
           </div>
 
           {isCreating && (
-            <form onSubmit={handleCreate} className="p-3 bg-blue-50/40 border-b border-blue-100 space-y-2">
+            <form onSubmit={handleCreate} className="p-3 bg-slate-50 border-b border-slate-200 space-y-2">
               <input
                 type="text"
-                placeholder="Название..."
+                placeholder="Название заметки..."
                 value={newTitle}
                 onChange={(e) => setNewTitle(e.target.value)}
                 autoFocus
-                className="w-full px-2.5 py-1.5 text-xs bg-white border border-gray-200 rounded-md focus:outline-none focus:border-[#3B4FDE]"
+                className="w-full px-2.5 py-1.5 text-xs bg-white border border-slate-200 rounded-md focus:outline-none focus:border-slate-900 transition-colors"
               />
               <div className="flex gap-2">
                 <select
                   value={newCategory}
                   onChange={(e) => setNewCategory(e.target.value as NoteCategory)}
-                  className="flex-1 text-xs px-2 py-1 bg-white border border-gray-200 rounded-md focus:outline-none"
+                  className="flex-1 text-xs px-2 py-1 bg-white border border-slate-200 rounded-md focus:outline-none focus:border-slate-900"
                 >
                   <option value="self">Про себя</option>
                   <option value="friends">Друзья</option>
@@ -122,14 +124,14 @@ export default function NotebookPage() {
                 </select>
                 <button
                   type="submit"
-                  className="bg-[#3B4FDE] text-white text-xs px-3 py-1 rounded-md font-medium hover:bg-[#3242c7]"
+                  className="bg-slate-900 text-white text-xs px-3 py-1 rounded-md font-medium hover:bg-slate-800 transition-colors"
                 >
                   Создать
                 </button>
                 <button
                   type="button"
                   onClick={() => setIsCreating(false)}
-                  className="text-gray-500 text-xs px-2 py-1 hover:text-gray-700"
+                  className="text-slate-500 text-xs px-2 py-1 hover:text-slate-700"
                 >
                   Отмена
                 </button>

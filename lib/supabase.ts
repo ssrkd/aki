@@ -1,14 +1,17 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://sogzsurnneusvlvbutmq.supabase.co'
+const supabaseAnonKey =
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_wVLQnCZDJy-TrKCwptUTFw_6r4wFJLJ'
 
 // Supabase клиент для использования на клиентской стороне
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Supabase клиент с service role для серверных операций (API routes)
 export function createServiceClient() {
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY!
+  const serviceRoleKey =
+    process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || supabaseAnonKey
   return createClient(supabaseUrl, serviceRoleKey)
 }
 

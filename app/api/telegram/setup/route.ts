@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { getBotToken } from '@/lib/keys'
 
 export async function GET(req: NextRequest) {
-  const botToken = process.env.TELEGRAM_BOT_TOKEN
+  const botToken = getBotToken()
   if (!botToken) {
     return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN is not defined' }, { status: 400 })
   }

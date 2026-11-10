@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { processChatMessage } from '@/lib/chat'
 import { createServiceClient } from '@/lib/supabase'
+import { getCronSecret, getKeySync } from '@/lib/keys'
 
 export const maxDuration = 60
 
@@ -45,7 +46,11 @@ export async function POST(req: NextRequest) {
     // 1. Проверка авторизации: сессионная кука или Bearer токен
     const sessionCookie = req.cookies.get('aki_session')?.value
     const authHeader = req.headers.get('authorization')
-    const secretToken = process.env.CRON_SECRET || process.env.SUPABASE_SERVICE_ROLE_KEY
+    const secretToken =
+      getCronSecret() ||
+      getKeySync('SUPABASE_SERVICE_ROLE_KEY') ||
+      process.env.CRON_SECRET ||
+      process.env.SUPABASE_SERVICE_ROLE_KEY
 
     const isAuthorized =
       Boolean(sessionCookie) ||

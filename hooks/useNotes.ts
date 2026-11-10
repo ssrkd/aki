@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { supabase } from '@/lib/supabase'
 import { Note, NoteCategory } from '@/lib/types'
 
 let cachedNotes: Note[] | null = null
@@ -11,7 +10,9 @@ export function useNotes() {
   const [isLoading, setIsLoading] = useState(!cachedNotes)
   const [selectedCategory, setSelectedCategory] = useState<NoteCategory | 'all'>('all')
   const [searchQuery, setSearchQuery] = useState('')
-  const [selectedNote, setSelectedNote] = useState<Note | null>(cachedNotes && cachedNotes.length > 0 ? cachedNotes[0] : null)
+  const [selectedNote, setSelectedNote] = useState<Note | null>(
+    cachedNotes && cachedNotes.length > 0 ? cachedNotes[0] : null
+  )
   const isFetchingRef = useRef(false)
 
   const fetchNotes = useCallback(async (isSilent = false) => {
@@ -20,23 +21,23 @@ export function useNotes() {
     if (!isSilent && !cachedNotes) setIsLoading(true)
 
     try {
-      const { data, error } = await supabase
-        .from('notes')
-        .select('*')
-        .order('updated_at', { ascending: false })
+      const res = await fetch('/api/notes')
+      const data = await res.json()
 
-      if (!error && data) {
-        cachedNotes = data
-        setNotes(data)
+      if (data?.notes) {
+        cachedNotes = data.notes
+        setNotes(data.notes)
         setSelectedNote((current) => {
-          if (!current && data.length > 0) return data[0]
+          if (!current && data.notes.length > 0) return data.notes[0]
           if (current) {
-            const found = data.find((n) => n.id === current.id)
-            return found || data[0] || null
+            const found = data.notes.find((n: Note) => n.id === current.id)
+            return found || data.notes[0] || null
           }
           return null
         })
       }
+    } catch (e) {
+      console.warn('Ошибка загрузки notes:', e)
     } finally {
       setIsLoading(false)
       isFetchingRef.current = false
@@ -54,37 +55,50 @@ export function useNotes() {
     }
   }, [fetchNotes])
 
-  const addNote = async (title: string, category: NoteCategory, content?: string) => {
-    const { data, error } = await supabase
-      .from('notes')
-      .insert({ title, category, content: content || '' })
-      .select()
-      .single()
+  const addNote = async (title: string, category: NoteCategory, content?: string): Promise<boolean> => {
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, category, content: content || '' }),
+      })
+      const data = await res.json()
 
-    if (!error && data) {
-      cachedNotes = [data, ...(cachedNotes || [])]
-      setNotes((prev) => [data, ...prev])
-      setSelectedNote(data)
-      fetchNotes(true)
+      if (res.ok && data?.note) {
+        cachedNotes = [data.note, ...(cachedNotes || [])]
+        setNotes((prev) => [data.note, ...prev])
+        setSelectedNote(data.note)
+        window.dispatchEvent(new CustomEvent('aki-db-changed'))
+        return true
+      }
+      return false
+    } catch {
+      return false
     }
-    return !error
   }
 
-  const updateNote = async (id: string, updates: Partial<Note>) => {
-    const { error } = await supabase
-      .from('notes')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', id)
+  const updateNote = async (id: string, updates: Partial<Note>): Promise<boolean> => {
+    // Оптимистичное обновление
+    setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)))
+    setSelectedNote((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev))
 
-    if (!error) {
-      setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...updates } : n)))
-      setSelectedNote((prev) => (prev && prev.id === id ? { ...prev, ...updates } : prev))
-      fetchNotes(true)
+    try {
+      const res = await fetch('/api/notes', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...updates }),
+      })
+      if (res.ok) {
+        window.dispatchEvent(new CustomEvent('aki-db-changed'))
+        return true
+      }
+      return false
+    } catch {
+      return false
     }
-    return !error
   }
 
-  const deleteNote = async (id: string) => {
+  const deleteNote = async (id: string): Promise<boolean> => {
     setNotes((prev) => prev.filter((n) => n.id !== id))
     if (selectedNote?.id === id) {
       setSelectedNote((prev) => {
@@ -92,8 +106,17 @@ export function useNotes() {
         return remaining[0] || null
       })
     }
-    await supabase.from('notes').delete().eq('id', id)
-    fetchNotes(true)
+
+    try {
+      const res = await fetch(`/api/notes?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        window.dispatchEvent(new CustomEvent('aki-db-changed'))
+        return true
+      }
+      return false
+    } catch {
+      return false
+    }
   }
 
   const filteredNotes = notes.filter((note) => {

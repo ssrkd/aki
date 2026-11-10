@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAIThoughts, addAIThought, deleteAIThought, getUserOverview } from '@/lib/ai'
+import { getAIKeys } from '@/lib/keys'
 
 export async function GET() {
   try {
@@ -18,7 +19,8 @@ export async function POST(req: NextRequest) {
     // Авто-генерация одной точной мысли на основе трекера (экономно, без прожигания токенов)
     if (action === 'reflect') {
       const overview = await getUserOverview()
-      const groqKey = process.env.GROQ_API_KEY_1 || process.env.GROQ_API_KEY_2
+      const keys = await getAIKeys()
+      const groqKey = keys.groq1 || keys.groq2
 
       if (!groqKey) {
         return NextResponse.json({ error: 'No API key' }, { status: 500 })

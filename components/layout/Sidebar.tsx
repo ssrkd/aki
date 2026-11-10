@@ -75,7 +75,7 @@ export default function Sidebar() {
           <img src="/photo/srk.webp" alt="srk" className="w-6 h-6 rounded-full object-cover ring-1 ring-slate-200" />
           <span className="text-xs font-medium text-slate-700">Серик</span>
         </div>
-        <span className="text-[10px] text-slate-400 font-mono">v0.6</span>
+        <span className="text-[10px] text-slate-400 font-mono">v0.8</span>
       </div>
     </aside>
   )

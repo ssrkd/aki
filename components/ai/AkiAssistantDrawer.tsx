@@ -95,7 +95,7 @@ export default function AkiAssistantDrawer() {
   const [showSessionsList, setShowSessionsList] = useState(false)
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
 
   // 1. Загрузка сессий чатов из localStorage при старте
   useEffect(() => {
@@ -521,12 +521,6 @@ export default function AkiAssistantDrawer() {
             <div className="p-3 bg-slate-50/80 border-b border-slate-200 max-h-[220px] overflow-y-auto space-y-1.5 animate-in slide-in-from-top-2 duration-150">
               <div className="flex items-center justify-between pb-1 text-[11px] text-slate-500 font-semibold uppercase tracking-wider">
                 <span>Твои диалоги ({sessions.length})</span>
-                <button
-                  onClick={handleStartNewChat}
-                  className="text-slate-900 hover:underline flex items-center gap-1 font-bold lowercase text-[11px]"
-                >
-                  <Plus size={11} /> + новый чат
-                </button>
               </div>
 
               {sessions.map((sess) => {
@@ -627,21 +621,32 @@ export default function AkiAssistantDrawer() {
                   e.preventDefault()
                   handleSend()
                 }}
-                className="p-2.5 bg-white border-t border-slate-100 flex items-center gap-1.5"
+                className="p-2.5 bg-white border-t border-slate-100 flex items-end gap-1.5"
               >
-                <input
+                <textarea
                   ref={inputRef}
-                  type="text"
                   value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Напишите aki AI..."
+                  onChange={(e) => {
+                    setInput(e.target.value)
+                    // Авто-высота: растёт вниз, но не больше 5 строк
+                    e.target.style.height = 'auto'
+                    e.target.style.height = Math.min(e.target.scrollHeight, 100) + 'px'
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault()
+                      handleSend()
+                    }
+                  }}
+                  placeholder="Напишите aki AI... (Enter — отправить)"
                   disabled={isLoading}
-                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-900 transition-colors"
+                  rows={1}
+                  className="flex-1 px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-900 placeholder:text-slate-400 outline-none focus:border-slate-900 transition-colors resize-none overflow-hidden min-h-[34px]"
                 />
                 <button
                   type="submit"
                   disabled={!input.trim() || isLoading}
-                  className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-white transition-colors"
+                  className="p-2 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-30 text-white transition-colors flex-shrink-0"
                 >
                   <Send size={13} />
                 </button>
@@ -652,21 +657,12 @@ export default function AkiAssistantDrawer() {
           {/* ВКЛАДКА 2: МЫСЛЬ АКИ (Блокнот памяти и наблюдений) */}
           {activeTab === 'thoughts' && (
             <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/40">
-              {/* Верхняя панель генерации мысли */}
+              {/* Верхняя панель */}
               <div className="p-3 border-b border-slate-100 bg-white flex items-center justify-between">
                 <div>
                   <h4 className="text-xs font-bold text-slate-900">мысль аки</h4>
                   <p className="text-[10px] text-slate-400">Накопленные знания и память о тебе</p>
                 </div>
-
-                <button
-                  onClick={handleReflect}
-                  disabled={isReflecting}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-[11px] font-medium transition-colors"
-                >
-                  <Sparkles size={11} className={isReflecting ? 'animate-spin' : ''} />
-                  <span>{isReflecting ? 'Анализирую...' : 'Новая мысль'}</span>
-                </button>
               </div>
 
               {/* Фильтры категорий */}
@@ -692,7 +688,7 @@ export default function AkiAssistantDrawer() {
                   <div className="text-center py-10">
                     <p className="text-xs text-slate-400">В этой категории пока нет записей.</p>
                     <p className="text-[11px] text-slate-400 mt-1">
-                      Нажмите «Новая мысль» или запишите факт вручную ниже.
+                      Расскажите aki AI что-нибудь о себе в чате.
                     </p>
                   </div>
                 ) : (
@@ -740,33 +736,7 @@ export default function AkiAssistantDrawer() {
                 )}
               </div>
 
-              {/* Добавить факт / заметку вручную */}
-              <form onSubmit={handleAddThought} className="p-2.5 bg-white border-t border-slate-100 flex gap-1.5">
-                <select
-                  value={newThoughtCategory}
-                  onChange={(e) => setNewThoughtCategory(e.target.value as any)}
-                  className="px-2 py-1.5 text-[10px] bg-slate-50 border border-slate-200 rounded-lg outline-none text-slate-700"
-                >
-                  <option value="self">Обо мне</option>
-                  <option value="friends">Друзья</option>
-                  <option value="work">Работа</option>
-                  <option value="principles">Принцип</option>
-                </select>
-                <input
-                  type="text"
-                  value={newThoughtText}
-                  onChange={(e) => setNewThoughtText(e.target.value)}
-                  placeholder="+ Записать факт о Серике..."
-                  className="flex-1 px-2.5 py-1.5 text-xs bg-slate-50 border border-slate-200 rounded-lg outline-none text-slate-900 placeholder:text-slate-400"
-                />
-                <button
-                  type="submit"
-                  disabled={!newThoughtText.trim()}
-                  className="px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white text-xs font-medium transition-colors"
-                >
-                  Записать
-                </button>
-              </form>
+              {/* Добавить факт вручную — УБРАНО по запросу */}
             </div>
           )}
 

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
+import { getBotToken } from '@/lib/keys'
 
 export async function POST(req: NextRequest) {
   try {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN
+    const botToken = getBotToken()
     const supabase = createServiceClient()
 
     // 1. Генерируем 4-значный OTP код

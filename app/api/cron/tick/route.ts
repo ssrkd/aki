@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServiceClient } from '@/lib/supabase'
 import { getAlmatyDateTime } from '@/lib/chat'
+import { getBotToken, getCronSecret, getKeySync } from '@/lib/keys'
 
 async function sendTelegramNotification(token: string, chatId: number | string, text: string) {
   try {
@@ -30,10 +31,14 @@ async function handleTick(req: NextRequest) {
   try {
     const authHeader = req.headers.get('authorization')
     const keyParam = req.nextUrl.searchParams.get('key')
+    const cronSecret = getCronSecret()
+    const serviceKey = getKeySync('SUPABASE_SERVICE_ROLE_KEY')
     const validKeys = [
+      cronSecret,
+      serviceKey,
+      'aki_cron_secret_srk_2026',
       process.env.CRON_SECRET,
       process.env.SUPABASE_SERVICE_ROLE_KEY,
-      'aki_cron_secret_srk_2026',
     ].filter(Boolean) as string[]
 
     const providedKey = (authHeader ? authHeader.replace(/^Bearer\s+/i, '') : keyParam) || ''
@@ -47,7 +52,7 @@ async function handleTick(req: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN
+    const botToken = getBotToken()
     if (!botToken) {
       return NextResponse.json({ error: 'TELEGRAM_BOT_TOKEN не задан' }, { status: 500 })
     }

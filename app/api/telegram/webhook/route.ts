@@ -252,7 +252,7 @@ export async function POST(req: NextRequest) {
       await sendTelegramMessage(
         botToken,
         chatId,
-        'Здравствуйте! Я — персональный личный ассистент Серика. Доступ к системе открыт исключительно для владельца. Всего доброго!'
+        'Здравствуйте! Я - персональный личный ассистент ssrk. Доступ к системе открыт исключительно для владельца. Всего доброго!'
       )
       return NextResponse.json({ ok: true })
     }

@@ -2,22 +2,20 @@ import { createServiceClient } from './supabase'
 
 /**
  * Менеджер ключей и конфигураций aki AI.
- * Все ключи берутся безопасно:
+ * Все ключи берутся динамически:
  * 1. process.env (Vercel Environment Variables и локальный .env.local)
- * 2. Supabase база данных (таблица app_settings — чтобы менять без пересборки Vercel)
- * В коде НЕТ секретных ключей в открытом виде, чтобы GitHub push не блокировался.
+ * 2. Supabase база данных (таблица ai_memory, категория config) — сохранено в облаке
+ * В репозитории НЕТ секретных ключей или их хэшей — GitHub push проходит на 100%.
  */
 
-// In-memory кэш для динамических настроек из Supabase (TTL: 2 минуты)
+// In-memory кэш для динамических настроек из Supabase (TTL: 5 минут)
 let cachedDbKeys: Record<string, string> | null = null
 let cacheExpiresAt = 0
 
-/**
- * Синхронное получение ключа из process.env
- */
 export function getKeySync(name: string): string {
   const envVal = process.env[name]
   if (envVal && envVal.trim()) return envVal.trim()
+  if (cachedDbKeys && cachedDbKeys[name]) return cachedDbKeys[name]
   return ''
 }
 
@@ -30,7 +28,7 @@ export function getCronSecret(): string {
 }
 
 /**
- * Асинхронное получение всех ключей ИИ (с поддержкой динамических ключей из БД Supabase)
+ * Асинхронное получение всех ключей ИИ из базы Supabase
  */
 export async function getAIKeys(): Promise<{
   groq1: string
@@ -44,31 +42,42 @@ export async function getAIKeys(): Promise<{
 }> {
   const now = Date.now()
 
-  // Проверяем / обновляем кэш из Supabase app_settings если возможно
+  // 1. Проверяем / обновляем кэш из Supabase если истек TTL
   if (!cachedDbKeys || now > cacheExpiresAt) {
     try {
       const supabase = createServiceClient()
-      const { data } = await supabase.from('app_settings').select('key, value').limit(50)
-      if (data && Array.isArray(data)) {
+      const { data } = await supabase
+        .from('ai_memory')
+        .select('content')
+        .eq('category', 'config')
+        .limit(20)
+
+      if (data && Array.isArray(data) && data.length > 0) {
         cachedDbKeys = {}
         for (const item of data) {
-          if (item?.key && item?.value) {
-            cachedDbKeys[item.key] = String(item.value).trim()
+          const raw = item?.content || ''
+          const idx = raw.indexOf(':')
+          if (idx > 0) {
+            const k = raw.slice(0, idx).trim()
+            const v = raw.slice(idx + 1).trim()
+            if (k && v) {
+              cachedDbKeys[k] = v
+            }
           }
         }
-        cacheExpiresAt = now + 120_000 // 2 min
+        cacheExpiresAt = now + 5 * 60 * 1000 // 5 min TTL
       }
-    } catch {
-      // Игнорируем сетевые ошибки, чтобы не блокировать выполнение
+    } catch (e) {
+      console.warn('Ошибка загрузки ключей из Supabase:', e)
     }
   }
 
   const resolve = (key: string): string => {
-    // 1. process.env (Vercel / .env.local)
+    // 1. process.env
     const envVal = process.env[key]
     if (envVal && envVal.trim()) return envVal.trim()
 
-    // 2. Supabase DB (app_settings)
+    // 2. Supabase DB
     const dbVal = cachedDbKeys?.[key]
     if (dbVal && dbVal.trim()) return dbVal.trim()
 

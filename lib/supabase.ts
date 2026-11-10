@@ -12,6 +12,6 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 export function createServiceClient() {
   const serviceRoleKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || supabaseAnonKey
+
   return createClient(supabaseUrl, serviceRoleKey)
 }
-

@@ -46,8 +46,7 @@ export async function POST(req: NextRequest) {
         console.error('Ошибка отправки Telegram:', err)
       }
 
-      return NextResponse.json({ success: true, sent: true })
-    }
+      return NextResponse.json({
         success: true,
         sent: true,
         message: 'Код отправлен в Telegram',
@@ -55,11 +54,11 @@ export async function POST(req: NextRequest) {
       })
     }
 
-    // Если подписчиков в базе пока нет
+    // Если токен не задан
     return NextResponse.json({
       success: true,
       sent: false,
-      message: 'Напишите боту в Telegram, чтобы получить код',
+      message: 'Бот не настроен',
       botUsername: 'srkandaki_bot',
     })
   } catch (err) {
